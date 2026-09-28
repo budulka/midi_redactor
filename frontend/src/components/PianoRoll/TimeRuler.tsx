@@ -1,5 +1,5 @@
 import type { TimeSignature } from '../../state/types.ts';
-import { barLabelStep, timeToX } from '../../utils/pianoRollGeometry.ts';
+import { barLabelStep, timeToX, xToTime } from '../../utils/pianoRollGeometry.ts';
 import { TIME_EPSILON, barDurationSeconds } from '../../utils/time.ts';
 
 interface TimeRulerProps {
@@ -7,6 +7,8 @@ interface TimeRulerProps {
   bpm: number;
   timeSignature: TimeSignature;
   pixelsPerSecond: number;
+  /** Called with the time under the pointer when the ruler is pressed with the left button. */
+  onSeek?: (time: number) => void;
 }
 
 /** Bar numbers along the timeline; labels are thinned out to powers of two when bars are narrow. */
@@ -15,6 +17,7 @@ export default function TimeRuler({
   bpm,
   timeSignature,
   pixelsPerSecond,
+  onSeek,
 }: TimeRulerProps) {
   const geometry = { pixelsPerSecond, rowHeight: 0 };
   const barSeconds = barDurationSeconds(bpm, timeSignature);
@@ -30,7 +33,16 @@ export default function TimeRuler({
   }
 
   return (
-    <div className="time-ruler" aria-label="Time ruler" style={{ width }}>
+    <div
+      className={`time-ruler${onSeek ? ' time-ruler--seekable' : ''}`}
+      aria-label="Time ruler"
+      style={{ width }}
+      onMouseDown={(event) => {
+        if (onSeek === undefined || event.button !== 0) return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        onSeek(xToTime(event.clientX - rect.left, geometry));
+      }}
+    >
       {labels.map(({ bar, x }) => (
         <span key={bar} className="time-ruler__label" style={{ left: x }}>
           {bar}

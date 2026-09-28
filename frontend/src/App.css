@@ -18,6 +18,7 @@
   --pedal-soft: #5bbbe0;
   --key-white: #eceef2;
   --key-black: #1f2127;
+  --playhead: #ff5a5a;
   color-scheme: dark;
   font-family: system-ui, sans-serif;
 }

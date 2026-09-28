@@ -1,8 +1,10 @@
 import { render } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { FakePianoEngine } from '../../audio/testing/FakePianoEngine.ts';
 import EditorProvider from '../../state/EditorProvider.tsx';
 import type { EditorState } from '../../state/editorState.ts';
 import ProjectProvider from '../../state/ProjectProvider.tsx';
+import TransportProvider from '../../state/TransportProvider.tsx';
 import StateProbe from './StateProbe.tsx';
 import type { Note, PedalEvent, Project } from '../../state/types.ts';
 
@@ -11,7 +13,9 @@ export function renderWithProviders(
   notes: readonly Note[] = [],
   editor?: Partial<EditorState>,
   pedals: readonly PedalEvent[] = [],
+  options: { engine?: FakePianoEngine } = {},
 ) {
+  const loadEngine = () => Promise.resolve(options.engine ?? new FakePianoEngine());
   const project: Project = {
     bpm: 120,
     timeSignature: { numerator: 4, denominator: 4 },
@@ -21,8 +25,10 @@ export function renderWithProviders(
   return render(
     <ProjectProvider initialProject={project}>
       <EditorProvider initialState={editor}>
-        {ui}
-        <StateProbe />
+        <TransportProvider loadEngine={loadEngine}>
+          {ui}
+          <StateProbe />
+        </TransportProvider>
       </EditorProvider>
     </ProjectProvider>,
   );

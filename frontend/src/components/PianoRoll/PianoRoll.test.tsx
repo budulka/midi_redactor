@@ -1,16 +1,22 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { FakePianoEngine } from '../../audio/testing/FakePianoEngine.ts';
 import EditorProvider from '../../state/EditorProvider.tsx';
 import ProjectProvider from '../../state/ProjectProvider.tsx';
+import TransportProvider from '../../state/TransportProvider.tsx';
 import * as idModule from '../../utils/id.ts';
 import ProjectInfo from '../ProjectInfo.tsx';
 import PianoRoll from './PianoRoll.tsx';
+
+let engine: FakePianoEngine;
 
 function renderPianoRoll() {
   render(
     <ProjectProvider>
       <EditorProvider>
-        <ProjectInfo />
-        <PianoRoll />
+        <TransportProvider loadEngine={() => Promise.resolve(engine)}>
+          <ProjectInfo />
+          <PianoRoll />
+        </TransportProvider>
       </EditorProvider>
     </ProjectProvider>,
   );
@@ -19,6 +25,7 @@ function renderPianoRoll() {
 
 describe('PianoRoll', () => {
   beforeEach(() => {
+    engine = new FakePianoEngine();
     vi.spyOn(idModule, 'createId').mockReturnValue('new-1');
   });
 
@@ -77,5 +84,33 @@ describe('PianoRoll', () => {
     fireEvent.keyDown(document.activeElement ?? grid, { key: 'Delete' });
     expect(screen.getByText('0 notes')).toBeInTheDocument();
     expect(screen.getByText('No note selected')).toBeInTheDocument();
+  });
+
+  it('renders the playhead', () => {
+    renderPianoRoll();
+    expect(screen.getByTestId('playhead')).toHaveStyle({ transform: 'translateX(0px)' });
+  });
+
+  it('plays a keyboard key while it is held', async () => {
+    renderPianoRoll();
+    const keyboard = screen.getByRole('group', { name: 'Piano keyboard' });
+    fireEvent.mouseDown(within(keyboard).getByRole('button', { name: 'C4' }), { button: 0 });
+    await waitFor(() =>
+      expect(engine.calls).toContainEqual({
+        op: 'attack',
+        channel: 'live',
+        pitch: 60,
+        velocity: 96,
+        time: 0,
+      }),
+    );
+    fireEvent.mouseUp(window);
+    expect(engine.calls).toContainEqual({ op: 'release', channel: 'live', pitch: 60, time: 0 });
+  });
+
+  it('moves the playhead when the ruler is clicked', () => {
+    renderPianoRoll();
+    fireEvent.mouseDown(screen.getByLabelText('Time ruler'), { clientX: 250, button: 0 });
+    expect(screen.getByTestId('playhead')).toHaveStyle({ transform: 'translateX(250px)' });
   });
 });
