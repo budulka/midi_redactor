@@ -1,4 +1,4 @@
-import type { Note } from '../state/types.ts';
+import type { Note, PedalEvent } from '../state/types.ts';
 import {
   DEFAULT_PIXELS_PER_SECOND,
   ROW_HEIGHT_PX,
@@ -9,6 +9,7 @@ import {
   gridLayers,
   hitTestNotes,
   noteRect,
+  noteTailRect,
   pitchToY,
   timeToX,
   timelineDurationSeconds,
@@ -106,6 +107,25 @@ describe('timelineDurationSeconds', () => {
 
   it('extends two bars past the last note, rounded up to a whole bar', () => {
     expect(timelineDurationSeconds([note('a', 60, 70, 0.5)], 120, fourFour)).toBe(76);
+  });
+
+  it('extends past the last pedal end', () => {
+    const pedal: PedalEvent = { id: 'p', type: 'sustain', start: 0, end: 70.5 };
+    expect(timelineDurationSeconds([], 120, fourFour, [pedal])).toBe(76);
+    expect(timelineDurationSeconds([], 120, fourFour)).toBe(60);
+  });
+});
+
+describe('noteTailRect', () => {
+  const c4 = note('a', 60, 0.5, 0.5);
+
+  it('spans from the note end to the sounding end, centred in the row', () => {
+    expect(noteTailRect(c4, 2, g)).toEqual({ x: 100, y: 677, width: 100, height: 4 });
+  });
+
+  it('is null when the note does not sound past its end', () => {
+    expect(noteTailRect(c4, 1, g)).toBeNull();
+    expect(noteTailRect(c4, 1 + 1e-12, g)).toBeNull();
   });
 });
 

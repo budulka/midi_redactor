@@ -1,4 +1,4 @@
-import type { Note } from '../state/types.ts';
+import type { Note, PedalEvent } from '../state/types.ts';
 import {
   DEFAULT_NOTE_VELOCITY,
   MIN_FREE_DURATION,
@@ -149,5 +149,15 @@ describe('withPreview', () => {
     expect(result).toEqual([a, preview]);
     expect(result[0]).toBe(a);
     expect(notes).toHaveLength(1);
+  });
+
+  it('works with pedals', () => {
+    const p1: PedalEvent = { id: 'p1', type: 'sustain', start: 0, end: 1 };
+    const p2: PedalEvent = { id: 'p2', type: 'soft', start: 0, end: 1 };
+    const pedals = Object.freeze([p1, p2]);
+    const moved = { ...p1, start: 0.5 };
+    expect(withPreview(pedals, moved)).toEqual([moved, p2]);
+    const added: PedalEvent = { id: 'p3', type: 'sostenuto', start: 2, end: 3 };
+    expect(withPreview(pedals, added)).toEqual([p1, p2, added]);
   });
 });

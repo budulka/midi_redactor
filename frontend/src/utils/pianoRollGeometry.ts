@@ -1,6 +1,6 @@
 import { MAX_PITCH } from '../state/constants.ts';
 import { clampPitch } from '../state/normalize.ts';
-import type { Note, TimeSignature } from '../state/types.ts';
+import type { Note, PedalEvent, TimeSignature } from '../state/types.ts';
 import { KEY_COUNT } from './pitch.ts';
 import { gridStepSeconds, type GridDivision } from './quantize.ts';
 import { TIME_EPSILON, barDurationSeconds, beatDurationSeconds } from './time.ts';
@@ -16,6 +16,8 @@ export const RESIZE_HANDLE_PX = 6;
 export const MIN_GRID_LINE_SPACING_PX = 4;
 export const MIN_TIMELINE_SECONDS = 60;
 export const MIN_BAR_LABEL_SPACING_PX = 40;
+/** Height of the bar that shows how long a note keeps sounding after its key is released. */
+export const NOTE_TAIL_HEIGHT_PX = 4;
 
 export interface ViewGeometry {
   readonly pixelsPerSecond: number;
@@ -76,6 +78,21 @@ export function noteRect(note: Note, g: ViewGeometry): Rect {
 }
 
 /**
+ * The thin bar after a note up to the moment it stops sounding (see noteSoundingEnds), vertically
+ * centred in the note row. Null when the note does not sound past its own end.
+ */
+export function noteTailRect(note: Note, soundingEnd: number, g: ViewGeometry): Rect | null {
+  const keyUp = note.start + note.duration;
+  if (soundingEnd <= keyUp + TIME_EPSILON) return null;
+  return {
+    x: timeToX(keyUp, g),
+    y: pitchToY(note.pitch, g) + (g.rowHeight - NOTE_TAIL_HEIGHT_PX) / 2,
+    width: (soundingEnd - keyUp) * g.pixelsPerSecond,
+    height: NOTE_TAIL_HEIGHT_PX,
+  };
+}
+
+/**
  * Finds the topmost note under a point. Later notes are rendered on top, so the array is
  * scanned from the end. The right part of a note (at most a third of its width) is the resize zone.
  */
@@ -101,14 +118,19 @@ export function hitTestNotes(
   return null;
 }
 
-/** Timeline length: at least MIN_TIMELINE_SECONDS, two bars past the last note, whole bars. */
+/**
+ * Timeline length: at least MIN_TIMELINE_SECONDS, two bars past the last note or pedal end,
+ * whole bars.
+ */
 export function timelineDurationSeconds(
   notes: readonly Note[],
   bpm: number,
   ts: TimeSignature,
+  pedals: readonly PedalEvent[] = [],
 ): number {
   const bar = barDurationSeconds(bpm, ts);
-  const lastEnd = notes.reduce((end, note) => Math.max(end, note.start + note.duration), 0);
+  const lastNoteEnd = notes.reduce((end, note) => Math.max(end, note.start + note.duration), 0);
+  const lastEnd = pedals.reduce((end, pedal) => Math.max(end, pedal.end), lastNoteEnd);
   const duration = Math.max(MIN_TIMELINE_SECONDS, lastEnd + 2 * bar);
   return Math.ceil(duration / bar - TIME_EPSILON) * bar;
 }
