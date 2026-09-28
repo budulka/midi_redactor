@@ -1,14 +1,11 @@
+import { acceptAttribute, detectFormat, type MediaFormat, type NamedFile } from './mediaFormats.ts';
+
+export { fileExtension } from './mediaFormats.ts';
+
 export type AudioFormatId = 'mp3' | 'wav' | 'ogg' | 'aac' | 'm4a';
 
-export interface AudioFormat {
+export interface AudioFormat extends MediaFormat {
   readonly id: AudioFormatId;
-  /** Name shown in messages. */
-  readonly label: string;
-  /** Lowercase, without the dot. */
-  readonly extensions: readonly string[];
-  readonly mimeTypes: readonly string[];
-  /** Argument for HTMLMediaElement.canPlayType. */
-  readonly probeType: string;
 }
 
 export const AUDIO_FORMATS: readonly AudioFormat[] = [
@@ -50,34 +47,11 @@ export const AUDIO_FORMATS: readonly AudioFormat[] = [
 ];
 
 /** Value of the file input's accept attribute: every extension, then every MIME type. */
-export const AUDIO_FILE_ACCEPT: string = [
-  ...AUDIO_FORMATS.flatMap((format) => format.extensions.map((ext) => `.${ext}`)),
-  ...AUDIO_FORMATS.flatMap((format) => format.mimeTypes),
-].join(',');
+export const AUDIO_FILE_ACCEPT: string = acceptAttribute(AUDIO_FORMATS);
 
-/** Lowercase part after the last dot; '' when there is no extension. */
-export function fileExtension(name: string): string {
-  const dot = name.lastIndexOf('.');
-  if (dot < 0) return '';
-  return name.slice(dot + 1).toLowerCase();
-}
-
-/**
- * Finds the format by extension first (operating systems name the MIME type of the same file
- * differently), then by MIME type for files without a known extension.
- */
-export function detectAudioFormat(file: {
-  readonly name: string;
-  readonly type: string;
-}): AudioFormat | null {
-  const extension = fileExtension(file.name);
-  if (extension !== '') {
-    const byExtension = AUDIO_FORMATS.find((format) => format.extensions.includes(extension));
-    if (byExtension !== undefined) return byExtension;
-  }
-  const type = file.type.toLowerCase();
-  if (type === '') return null;
-  return AUDIO_FORMATS.find((format) => format.mimeTypes.includes(type)) ?? null;
+/** Finds the audio format by extension first, then by MIME type. */
+export function detectAudioFormat(file: NamedFile): AudioFormat | null {
+  return detectFormat(AUDIO_FORMATS, file);
 }
 
 export function unsupportedFileMessage(name: string): string {

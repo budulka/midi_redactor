@@ -25,6 +25,7 @@ playwright-report/
 *.aac
 *.m4a
 *.mp4
+*.m4v
 *.webm
 *.mov
 *.mid

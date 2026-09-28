@@ -18,3 +18,8 @@ export function formatBarBeat(seconds: number, bpm: number, ts: TimeSignature): 
   const { bar, beat } = secondsToBarPosition(Math.max(0, seconds), bpm, ts);
   return `${bar}.${beat}`;
 }
+
+/** Media position `m:ss.mmm / m:ss.mmm` (current time and duration). */
+export function formatMediaPosition(current: number, duration: number): string {
+  return `${formatClock(current)} / ${formatClock(duration)}`;
+}
