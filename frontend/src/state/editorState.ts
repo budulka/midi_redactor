@@ -10,6 +10,8 @@ export interface EditorState {
   readonly selectedNoteIds: readonly string[];
   /** Selected pedals; note and pedal selections exclude each other. */
   readonly selectedPedalIds: readonly string[];
+  /** Scroll the piano roll so that the playhead stays in view during playback. */
+  readonly followPlayhead: boolean;
 }
 
 export const DEFAULT_EDITOR_STATE: EditorState = {
@@ -18,6 +20,7 @@ export const DEFAULT_EDITOR_STATE: EditorState = {
   pixelsPerSecond: DEFAULT_PIXELS_PER_SECOND,
   selectedNoteIds: [],
   selectedPedalIds: [],
+  followPlayhead: true,
 };
 
 export type EditorAction =
@@ -26,7 +29,8 @@ export type EditorAction =
   | { readonly type: 'editor/setZoom'; readonly pixelsPerSecond: number }
   | { readonly type: 'editor/selectNotes'; readonly ids: readonly string[] }
   | { readonly type: 'editor/selectPedals'; readonly ids: readonly string[] }
-  | { readonly type: 'editor/clearSelection' };
+  | { readonly type: 'editor/clearSelection' }
+  | { readonly type: 'editor/setFollowPlayhead'; readonly followPlayhead: boolean };
 
 export function setGridDivision(gridDivision: GridDivision): EditorAction {
   return { type: 'editor/setGridDivision', gridDivision };
@@ -53,6 +57,10 @@ export function selectPedals(ids: readonly string[]): EditorAction {
 /** Clears both the note and the pedal selection. */
 export function clearSelection(): EditorAction {
   return { type: 'editor/clearSelection' };
+}
+
+export function setFollowPlayhead(followPlayhead: boolean): EditorAction {
+  return { type: 'editor/setFollowPlayhead', followPlayhead };
 }
 
 /** Selected notes in project order; unknown ids are ignored. */

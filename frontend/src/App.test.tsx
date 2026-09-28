@@ -1,5 +1,8 @@
 import { render, screen, within } from '@testing-library/react';
 import App from './App.tsx';
+import { loadPianoEngine } from './audio/loadEngine.ts';
+
+vi.mock('./audio/loadEngine.ts', () => ({ loadPianoEngine: vi.fn() }));
 
 describe('App', () => {
   beforeEach(() => {
@@ -29,6 +32,19 @@ describe('App', () => {
         name: 'Piano roll',
       }),
     ).toBeInTheDocument();
+    expect(await screen.findByText('backend: online')).toBeInTheDocument();
+  });
+
+  it('shows the playback controls without loading the piano', async () => {
+    render(<App />);
+    const playback = within(
+      within(screen.getByRole('banner', { name: 'Transport' })).getByRole('group', {
+        name: 'Playback',
+      }),
+    );
+    expect(playback.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    expect(playback.getByRole('button', { name: 'Stop' })).toBeInTheDocument();
+    expect(loadPianoEngine).not.toHaveBeenCalled();
     expect(await screen.findByText('backend: online')).toBeInTheDocument();
   });
 });

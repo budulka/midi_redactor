@@ -17,6 +17,8 @@ export const MIN_GRID_LINE_SPACING_PX = 4;
 export const MIN_TIMELINE_SECONDS = 60;
 export const MIN_BAR_LABEL_SPACING_PX = 40;
 /** Height of the bar that shows how long a note keeps sounding after its key is released. */
+/** Gap kept between the playhead and the edge of the view when the view follows it. */
+export const FOLLOW_MARGIN_PX = 24;
 export const NOTE_TAIL_HEIGHT_PX = 4;
 
 export interface ViewGeometry {
@@ -193,4 +195,20 @@ export function clampZoom(pixelsPerSecond: number): number {
 /** Note opacity for a velocity: 0.35 at 1, 1 at 127. */
 export function velocityToOpacity(velocity: number): number {
   return 0.35 + (0.65 * (velocity - 1)) / 126;
+}
+
+/**
+ * New scrollLeft that brings the playhead back into view, page by page, or null when it is visible.
+ * The sticky keyboard covers the left keyboardWidth pixels of the scroll container, so the visible
+ * part of the timeline is [scrollLeft, scrollLeft + clientWidth - keyboardWidth).
+ */
+export function followScrollLeft(
+  playheadX: number,
+  scrollLeft: number,
+  clientWidth: number,
+  keyboardWidth: number = KEYBOARD_WIDTH_PX,
+): number | null {
+  const visibleEnd = scrollLeft + clientWidth - keyboardWidth - FOLLOW_MARGIN_PX;
+  if (playheadX >= scrollLeft && playheadX <= visibleEnd) return null;
+  return Math.max(0, playheadX - FOLLOW_MARGIN_PX);
 }

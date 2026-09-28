@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 import { useEditor } from '../../state/editorContext.ts';
 import { useProject } from '../../state/projectContext.ts';
+import { useTransportApi } from '../../state/transportContext.ts';
 import {
   KEYBOARD_WIDTH_PX,
   ROW_HEIGHT_PX,
@@ -14,6 +15,7 @@ import PedalLabels from './PedalLabels.tsx';
 import PedalLane from './PedalLane.tsx';
 import PianoKeyboard from './PianoKeyboard.tsx';
 import PianoRollToolbar from './PianoRollToolbar.tsx';
+import Playhead from './Playhead.tsx';
 import TimeRuler from './TimeRuler.tsx';
 import './PianoRoll.css';
 
@@ -27,6 +29,7 @@ const CENTER_PITCH = 60;
 export default function PianoRoll() {
   const { notes, pedals, bpm, timeSignature } = useProject();
   const { pixelsPerSecond } = useEditor();
+  const api = useTransportApi();
   const scrollRef = useRef<HTMLDivElement>(null);
   const durationSeconds = timelineDurationSeconds(notes, bpm, timeSignature, pedals);
 
@@ -55,10 +58,11 @@ export default function PianoRoll() {
             bpm={bpm}
             timeSignature={timeSignature}
             pixelsPerSecond={pixelsPerSecond}
+            onSeek={api.seek}
           />
         </div>
         <div className="piano-roll__keyboard">
-          <PianoKeyboard rowHeight={ROW_HEIGHT_PX} />
+          <PianoKeyboard rowHeight={ROW_HEIGHT_PX} onNoteOn={api.noteOn} onNoteOff={api.noteOff} />
         </div>
         <NoteGrid />
         <div className="piano-roll__pedal-labels">
@@ -67,6 +71,7 @@ export default function PianoRoll() {
         <div className="piano-roll__pedals">
           <PedalLane />
         </div>
+        <Playhead scrollRef={scrollRef} />
       </div>
     </section>
   );

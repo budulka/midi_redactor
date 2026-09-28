@@ -4,6 +4,7 @@ import {
   ROW_HEIGHT_PX,
   barLabelStep,
   clampZoom,
+  followScrollLeft,
   gridBackgroundImage,
   gridContentSize,
   gridLayers,
@@ -207,5 +208,22 @@ describe('velocityToOpacity', () => {
     for (let v = 1; v < 127; v += 1) {
       expect(velocityToOpacity(v + 1)).toBeGreaterThan(velocityToOpacity(v));
     }
+  });
+});
+
+describe('followScrollLeft', () => {
+  it('keeps the view while the playhead is visible', () => {
+    expect(followScrollLeft(500, 0, 672)).toBeNull();
+    expect(followScrollLeft(576, 0, 672)).toBeNull();
+    expect(followScrollLeft(1000, 800, 672)).toBeNull();
+  });
+
+  it('pages forward when the playhead reaches the right edge', () => {
+    expect(followScrollLeft(590, 0, 672)).toBe(566);
+  });
+
+  it('jumps back when the playhead is left of the view', () => {
+    expect(followScrollLeft(100, 400, 672)).toBe(76);
+    expect(followScrollLeft(10, 400, 672)).toBe(0);
   });
 });

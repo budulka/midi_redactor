@@ -37,6 +37,10 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return state.selectedNoteIds.length === 0 && state.selectedPedalIds.length === 0
         ? state
         : { ...state, selectedNoteIds: [], selectedPedalIds: [] };
+    case 'editor/setFollowPlayhead':
+      return action.followPlayhead === state.followPlayhead
+        ? state
+        : { ...state, followPlayhead: action.followPlayhead };
     default:
       return assertNever(action);
   }

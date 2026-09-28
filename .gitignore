@@ -30,6 +30,7 @@ playwright-report/
 *.mid
 *.midi
 !**/tests/fixtures/**
+!frontend/public/samples/**
 
 # Editors / OS
 .idea/
