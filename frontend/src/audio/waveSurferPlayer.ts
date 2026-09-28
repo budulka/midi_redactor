@@ -1,4 +1,5 @@
 import WaveSurfer from 'wavesurfer.js';
+import { isAbortError, toError } from '../media/errors.ts';
 import type { CreateWaveformPlayer, WaveformPlayer } from './waveformPlayer.ts';
 
 export const WAVEFORM_HEIGHT_PX = 96;
@@ -6,18 +7,6 @@ export const WAVEFORM_HEIGHT_PX = 96;
 const WAVE_COLOR = '#8a90a0';
 const PROGRESS_COLOR = '#5b9cf0';
 const CURSOR_COLOR = '#ff5a5a';
-
-function isAbortError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    (error as { readonly name?: unknown }).name === 'AbortError'
-  );
-}
-
-function toError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(String(error));
-}
 
 /**
  * Waveform player on wavesurfer.js. Audio plays through an HTMLAudioElement, so a changed rate
