@@ -160,3 +160,113 @@ body {
   color: var(--err);
   font-size: 13px;
 }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* More specific than `.app__media > section`, which centres the placeholders. */
+.app__media > .app__audio {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 8px;
+  gap: 8px;
+  min-height: 0;
+}
+
+.audio-track {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  width: 100%;
+  gap: 8px;
+  min-width: 0;
+}
+
+.audio-track__toolbar,
+.audio-track__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.audio-track__load {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.audio-track__load:focus-within {
+  outline: 2px solid var(--note);
+}
+
+.audio-track__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.audio-track__stage {
+  position: relative;
+}
+
+.audio-track__waveform {
+  position: relative;
+  height: 96px;
+  background: var(--bg);
+}
+
+.audio-track__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 8px;
+  text-align: center;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.audio-track__status {
+  color: var(--text);
+}
+
+.audio-track__play {
+  min-width: 64px;
+}
+
+.audio-track__position {
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.audio-track__error {
+  margin: 0;
+  color: var(--err);
+  font-size: 13px;
+}
+
+.rate-select {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 13px;
+}
