@@ -6,6 +6,7 @@ import {
   selectPedals,
   selectedNotes,
   selectedPedals,
+  setFollowPlayhead,
   setGridDivision,
   setSnap,
   setZoom,
@@ -27,7 +28,15 @@ describe('editorReducer', () => {
       pixelsPerSecond: 100,
       selectedNoteIds: [],
       selectedPedalIds: [],
+      followPlayhead: true,
     });
+  });
+
+  it('toggles following the playhead', () => {
+    const next = editorReducer(initial, setFollowPlayhead(false));
+    expect(next.followPlayhead).toBe(false);
+    expect(editorReducer(next, setFollowPlayhead(false))).toBe(next);
+    expect(editorReducer(initial, setFollowPlayhead(true))).toBe(initial);
   });
 
   it('sets the grid division', () => {
