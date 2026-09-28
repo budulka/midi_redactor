@@ -100,7 +100,7 @@ describe('Transport', () => {
     engine.time = 1.05;
     transport.stop();
     expect(engine.calls.at(-1)).toMatchObject({ op: 'releaseAll', channel: 'playback' });
-    expect(transport.getSnapshot()).toEqual({ status: 'stopped', position: 0 });
+    expect(transport.getSnapshot()).toEqual({ status: 'stopped', position: 0, rate: 1 });
     expect(engine.activeTickers).toBe(0);
 
     transport.play();
@@ -108,7 +108,7 @@ describe('Transport', () => {
     transport.pause();
     expect(transport.getSnapshot().position).toBeGreaterThan(0);
     transport.stop();
-    expect(transport.getSnapshot()).toEqual({ status: 'stopped', position: 0 });
+    expect(transport.getSnapshot()).toEqual({ status: 'stopped', position: 0, rate: 1 });
   });
 
   it('seeks during playback and keeps playing from there', () => {
@@ -200,7 +200,7 @@ describe('Transport', () => {
     const { engine, transport } = setup([]);
     transport.play();
     at(engine, 60.06);
-    expect(transport.getSnapshot()).toEqual({ status: 'paused', position: 60 });
+    expect(transport.getSnapshot()).toEqual({ status: 'paused', position: 60, rate: 1 });
     expect(engine.calls.at(-1)).toMatchObject({ op: 'releaseAll', channel: 'playback' });
     expect(engine.activeTickers).toBe(0);
 
@@ -245,6 +245,100 @@ describe('Transport', () => {
     transport.stop();
     expect(engine.calls.length).toBeGreaterThan(0);
     expect(engine.calls.every((call) => call.channel === 'playback')).toBe(true);
+  });
+
+  it('starts at the default rate', () => {
+    expect(new Transport().getSnapshot().rate).toBe(1);
+  });
+
+  it('changes the rate while stopped and clamps it', () => {
+    const { transport } = setup();
+    const listener = vi.fn();
+    transport.subscribe(listener);
+    transport.setRate(0.5);
+    expect(transport.getSnapshot()).toEqual({ status: 'stopped', position: 0, rate: 0.5 });
+    expect(listener).toHaveBeenCalledTimes(1);
+    transport.setRate(0.5);
+    expect(listener).toHaveBeenCalledTimes(1);
+    transport.setRate(3);
+    expect(transport.getSnapshot().rate).toBe(2);
+    transport.setRate(NaN);
+    expect(transport.getSnapshot().rate).toBe(1);
+  });
+
+  it('schedules notes at the playback rate', () => {
+    const { engine, transport } = setup();
+    transport.setRate(0.5);
+    transport.play();
+    expect(calls(engine)).toEqual([
+      { op: 'attack', channel: 'playback', pitch: 60, velocity: 100, time: 0.05 },
+    ]);
+    at(engine, 0.5);
+    expect(engine.calls).toHaveLength(1);
+    at(engine, 1.0);
+    expect(calls(engine)[1]).toEqual({ op: 'release', channel: 'playback', pitch: 60, time: 1.05 });
+    engine.time = 1.05;
+    expect(transport.getPosition()).toBeCloseTo(0.5);
+  });
+
+  it('restarts playback from the current position when the rate changes', () => {
+    const { engine, transport } = setup();
+    transport.setRate(0.5);
+    transport.play();
+    at(engine, 1.0);
+    engine.time = 1.05;
+    const listener = vi.fn();
+    transport.subscribe(listener);
+    const before = engine.calls.length;
+    transport.setRate(2);
+    expect(calls(engine).slice(before)).toEqual([
+      { op: 'releaseAll', channel: 'playback', time: 1.05 },
+    ]);
+    expect(transport.getSnapshot().status).toBe('playing');
+    expect(transport.getSnapshot().rate).toBe(2);
+    expect(listener).toHaveBeenCalledTimes(1);
+    engine.time = 1.35;
+    expect(transport.getPosition()).toBeCloseTo(1.0);
+  });
+
+  it('keeps the rate on pause, seek and stop', () => {
+    const { engine, transport } = setup();
+    transport.setRate(0.5);
+    transport.play();
+    engine.time = 1;
+    transport.pause();
+    expect(transport.getSnapshot().rate).toBe(0.5);
+    transport.seek(3);
+    expect(transport.getSnapshot()).toEqual({ status: 'paused', position: 3, rate: 0.5 });
+    transport.stop();
+    expect(transport.getSnapshot()).toEqual({ status: 'stopped', position: 0, rate: 0.5 });
+  });
+
+  it('extends the timeline to the end of the media', () => {
+    const { engine, transport } = setup([]);
+    transport.setMediaDuration(90);
+    transport.play();
+    at(engine, 94.06);
+    expect(transport.getSnapshot().status).toBe('paused');
+    expect(transport.getSnapshot().position).toBe(94);
+  });
+
+  it('pauses at the end of the notes without media', () => {
+    const { engine, transport } = setup([]);
+    transport.setMediaDuration(-5);
+    transport.play();
+    at(engine, 60.06);
+    expect(transport.getSnapshot()).toEqual({ status: 'paused', position: 60, rate: 1 });
+  });
+
+  it('pauses at the new end when the media is removed during playback', () => {
+    const { engine, transport } = setup([]);
+    transport.setMediaDuration(90);
+    transport.play();
+    engine.time = 70.05;
+    transport.setMediaDuration(0);
+    engine.tick();
+    expect(transport.getSnapshot()).toEqual({ status: 'paused', position: 60, rate: 1 });
   });
 
   it('stops and drops the engine on dispose', () => {

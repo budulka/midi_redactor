@@ -4,6 +4,7 @@ import {
   formatPlaybackRate,
   MAX_PLAYBACK_RATE,
   MIN_PLAYBACK_RATE,
+  nudgedPlaybackRate,
   PLAYBACK_RATES,
 } from './playbackRate.ts';
 
@@ -43,5 +44,21 @@ describe('formatPlaybackRate', () => {
     expect(formatPlaybackRate(0.25)).toBe('0.25×');
     expect(formatPlaybackRate(1)).toBe('1×');
     expect(formatPlaybackRate(1.5)).toBe('1.5×');
+  });
+});
+
+describe('nudgedPlaybackRate', () => {
+  it('multiplies the base rate by the nudge', () => {
+    expect(nudgedPlaybackRate(1, 0.95)).toBe(0.95);
+    expect(nudgedPlaybackRate(0.5, 0.97)).toBe(0.485);
+    expect(nudgedPlaybackRate(2, 1.05)).toBe(2.1);
+  });
+
+  it('never goes below the minimum rate', () => {
+    expect(nudgedPlaybackRate(0.25, 0.95)).toBe(0.25);
+  });
+
+  it('hides floating-point noise', () => {
+    expect(nudgedPlaybackRate(0.7, 0.97)).toBe(0.679);
   });
 });
