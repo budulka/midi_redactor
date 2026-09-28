@@ -10,7 +10,8 @@
     "test": "vitest",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "fetch-samples": "node scripts/fetch-piano-samples.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
