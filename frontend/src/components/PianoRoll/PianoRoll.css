@@ -1,0 +1,171 @@
+.piano-roll {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.piano-roll-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.note-inspector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.note-inspector__pitch {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.note-inspector__input {
+  width: 56px;
+}
+
+.piano-roll__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  background: var(--bg);
+}
+
+.piano-roll__corner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.piano-roll__ruler {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.time-ruler {
+  position: relative;
+  height: 100%;
+}
+
+.time-ruler__label {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  padding: 4px 0 0 4px;
+  border-left: 1px solid var(--grid-bar);
+  font-size: 11px;
+  color: var(--muted);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.piano-roll__keyboard {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  border-right: 1px solid var(--border);
+}
+
+.piano-keyboard {
+  display: flex;
+  flex-direction: column;
+  background: var(--key-white);
+}
+
+.piano-key {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 0 4px;
+  border: 0;
+  border-bottom: 1px solid #b9bcc4;
+  border-radius: 0;
+  background: var(--key-white);
+  color: #333;
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.piano-key--black {
+  width: 62%;
+  background: var(--key-black);
+  border-bottom-color: var(--key-black);
+}
+
+.piano-key--pressed {
+  background: var(--note-selected);
+}
+
+.piano-key__label {
+  pointer-events: none;
+}
+
+.note-grid {
+  position: relative;
+  outline: none;
+  cursor: crosshair;
+}
+
+.note-grid:focus-visible {
+  outline: 1px solid var(--note-selected);
+  outline-offset: -1px;
+}
+
+.note-grid__rows {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  pointer-events: none;
+}
+
+.note-grid__row {
+  border-bottom: 1px solid var(--grid-row);
+}
+
+.note-grid__row--black {
+  background: var(--grid-row-black);
+}
+
+.note {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  border-radius: 2px;
+  background: var(--note);
+  cursor: grab;
+}
+
+.note--selected {
+  background: var(--note-selected);
+  border-color: #fff;
+}
+
+.note__handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(6px, 33%);
+  cursor: ew-resize;
+}
