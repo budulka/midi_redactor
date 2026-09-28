@@ -1,0 +1,89 @@
+:root {
+  --bg: #1b1d23;
+  --panel: #252830;
+  --border: #353945;
+  --text: #e6e8ee;
+  --muted: #8a90a0;
+  --ok: #4caf7a;
+  --err: #e0605e;
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    'transport transport'
+    'editor media';
+  height: 100vh;
+  gap: 1px;
+  background: var(--border);
+}
+
+.app > * {
+  background: var(--panel);
+}
+
+.app__transport {
+  grid-area: transport;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+}
+
+.app__title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.app__editor {
+  grid-area: editor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app__media {
+  grid-area: media;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+}
+
+.app__media > section {
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placeholder {
+  color: var(--muted);
+}
+
+.backend-status {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.backend-status--online {
+  color: var(--ok);
+}
+
+.backend-status--offline {
+  color: var(--err);
+}
