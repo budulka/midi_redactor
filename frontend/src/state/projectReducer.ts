@@ -1,5 +1,6 @@
 import type { NoteChange, PedalChange, ProjectAction } from './actions.ts';
 import { clampBpm, normalizeNote, normalizePedal } from './normalize.ts';
+import { pedalsOverlap } from '../utils/pedalIntervals.ts';
 import type { Note, PedalEvent, Project } from './types.ts';
 import { validateTimeSignature } from './validation.ts';
 
@@ -29,7 +30,9 @@ interface Item {
 }
 
 /**
- * Appends items with new ids. Items with a duplicate id or a non-finite value are dropped.
+ * Appends items with new ids. Items with a duplicate id or a non-finite value are dropped, as
+ * are items rejected by `canAdd`, which receives the normalized item and the current list
+ * (existing items plus those already accepted in this call).
  * Returns the original array when nothing was added.
  */
 function addItems<T extends Item>(
@@ -37,15 +40,33 @@ function addItems<T extends Item>(
   added: readonly T[],
   isFiniteItem: (item: T) => boolean,
   normalize: (item: T) => T,
+  canAdd?: (item: T, current: readonly T[]) => boolean,
 ): readonly T[] {
   const ids = new Set(items.map((item) => item.id));
-  const accepted: T[] = [];
+  const current: T[] = [...items];
+  let acceptedCount = 0;
   for (const item of added) {
     if (ids.has(item.id) || !isFiniteItem(item)) continue;
+    const normalized = normalize(item);
+    if (canAdd !== undefined && !canAdd(normalized, current)) continue;
     ids.add(item.id);
-    accepted.push(normalize(item));
+    current.push(normalized);
+    acceptedCount += 1;
   }
-  return accepted.length === 0 ? items : [...items, ...accepted];
+  return acceptedCount === 0 ? items : current;
+}
+
+function fitsAmongPedals(pedal: PedalEvent, current: readonly PedalEvent[]): boolean {
+  return !current.some((other) => pedalsOverlap(pedal, other));
+}
+
+/** True when a pedal changed by an update overlaps another pedal of its type. */
+function hasChangedOverlap(before: readonly PedalEvent[], after: readonly PedalEvent[]): boolean {
+  return after.some(
+    (pedal, index) =>
+      pedal !== before[index] &&
+      after.some((other) => other.id !== pedal.id && pedalsOverlap(pedal, other)),
+  );
 }
 
 /**
@@ -118,19 +139,20 @@ export function projectReducer(state: Project, action: ProjectAction): Project {
     case 'pedals/add':
       return withPedals(
         state,
-        addItems(state.pedals, action.pedals, isFinitePedal, normalizePedal),
+        addItems(state.pedals, action.pedals, isFinitePedal, normalizePedal, fitsAmongPedals),
       );
-    case 'pedals/update':
-      return withPedals(
-        state,
-        updateItems<PedalEvent, PedalChange['patch']>(
-          state.pedals,
-          action.changes,
-          isFinitePedal,
-          normalizePedal,
-          samePedal,
-        ),
+    case 'pedals/update': {
+      const pedals = updateItems<PedalEvent, PedalChange['patch']>(
+        state.pedals,
+        action.changes,
+        isFinitePedal,
+        normalizePedal,
+        samePedal,
       );
+      // The whole action is rejected when the final state would contain overlapping pedals.
+      if (hasChangedOverlap(state.pedals, pedals)) return state;
+      return withPedals(state, pedals);
+    }
     case 'pedals/remove':
       return withPedals(state, removeItems(state.pedals, action.ids));
     case 'project/setBpm': {

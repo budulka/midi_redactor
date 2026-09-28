@@ -12,7 +12,10 @@ export function pedalsOverlap(a: PedalEvent, b: PedalEvent): boolean {
 }
 
 /** Pedals of one type sorted by start. The input is not mutated. */
-export function pedalsOfType(pedals: readonly PedalEvent[], type: PedalType): readonly PedalEvent[] {
+export function pedalsOfType(
+  pedals: readonly PedalEvent[],
+  type: PedalType,
+): readonly PedalEvent[] {
   return pedals.filter((pedal) => pedal.type === type).sort((a, b) => a.start - b.start);
 }
 

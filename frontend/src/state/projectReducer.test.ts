@@ -199,6 +199,70 @@ describe('pedals', () => {
   });
 });
 
+describe('pedal overlaps', () => {
+  const pedal = (id: string, type: PedalEvent['type'], start: number, end: number): PedalEvent => ({
+    id,
+    type,
+    start,
+    end,
+  });
+
+  it('rejects an added pedal that overlaps one of the same type', () => {
+    const state = makeState();
+    expect(projectReducer(state, addPedals([pedal('x', 'sustain', 0.5, 1.5)]))).toBe(state);
+    expect(projectReducer(state, addPedals([pedal('x', 'sustain', 1, 2)])).pedals).toHaveLength(3);
+    expect(projectReducer(state, addPedals([pedal('x', 'soft', 2, 3)])).pedals).toHaveLength(3);
+    expect(
+      projectReducer(state, addPedals([pedal('x', 'sostenuto', 0.5, 1.5)])).pedals,
+    ).toHaveLength(3);
+  });
+
+  it('rejects the second of two new pedals that overlap each other', () => {
+    const state = makeState();
+    const first = pedal('x', 'sustain', 3, 4);
+    const next = projectReducer(state, addPedals([first, pedal('y', 'sustain', 3.5, 5)]));
+    expect(next.pedals).toEqual([sustain, soft, first]);
+  });
+
+  it('keeps adding valid pedals after a rejected one in the same action', () => {
+    const state = makeState();
+    const valid = pedal('y', 'sustain', 1, 2);
+    const next = projectReducer(state, addPedals([pedal('x', 'sustain', 0.5, 1.5), valid]));
+    expect(next.pedals).toEqual([sustain, soft, valid]);
+  });
+
+  it('checks overlaps after normalization', () => {
+    const state = makeState();
+    expect(projectReducer(state, addPedals([pedal('x', 'sustain', -1, -0.5)]))).toBe(state);
+  });
+
+  it('rejects an update that makes pedals overlap and allows touching', () => {
+    const state = makeState({ pedals: [sustain, soft, pedal('p3', 'sustain', 2, 3)] });
+    expect(projectReducer(state, updatePedal('p1', { end: 3 }))).toBe(state);
+    expect(projectReducer(state, updatePedal('p1', { end: 2 })).pedals[0]).toEqual({
+      ...sustain,
+      end: 2,
+    });
+  });
+
+  it('allows swapping two pedals in one action', () => {
+    const state = makeState({ pedals: [sustain, pedal('p3', 'sustain', 1, 2)] });
+    const next = projectReducer(
+      state,
+      updatePedals([
+        { id: 'p1', patch: { start: 1, end: 2 } },
+        { id: 'p3', patch: { start: 0, end: 1 } },
+      ]),
+    );
+    expect(next.pedals).toEqual([{ ...sustain, start: 1, end: 2 }, pedal('p3', 'sustain', 0, 1)]);
+  });
+
+  it('rejects changing the type to one that is taken', () => {
+    const state = makeState();
+    expect(projectReducer(state, updatePedal('p2', { type: 'sustain' }))).toBe(state);
+  });
+});
+
 describe('project/setBpm', () => {
   it('changes bpm without moving notes in seconds', () => {
     const state = makeState();
