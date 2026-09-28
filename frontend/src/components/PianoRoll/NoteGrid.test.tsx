@@ -3,7 +3,7 @@ import EditorProvider from '../../state/EditorProvider.tsx';
 import type { EditorState } from '../../state/editorState.ts';
 import ProjectProvider from '../../state/ProjectProvider.tsx';
 import { useProject } from '../../state/projectContext.ts';
-import type { Note, Project } from '../../state/types.ts';
+import type { Note, PedalEvent, Project } from '../../state/types.ts';
 import * as idModule from '../../utils/id.ts';
 import NoteGrid from './NoteGrid.tsx';
 
@@ -18,12 +18,12 @@ function ProjectProbe() {
   return <pre data-testid="notes">{JSON.stringify(project.notes)}</pre>;
 }
 
-function renderGrid(notes: Note[] = [], editor?: Partial<EditorState>) {
+function renderGrid(notes: Note[] = [], editor?: Partial<EditorState>, pedals: PedalEvent[] = []) {
   const project: Project = {
     bpm: 120,
     timeSignature: { numerator: 4, denominator: 4 },
     notes,
-    pedals: [],
+    pedals,
   };
   render(
     <ProjectProvider initialProject={project}>
@@ -191,6 +191,15 @@ describe('NoteGrid', () => {
     expect(grid).toHaveFocus();
   });
 
+  it('marks focus from the mouse so the focus ring stays hidden', () => {
+    const grid = renderGrid();
+    fireEvent.mouseDown(grid, { clientX: 30, clientY: C4_Y });
+    fireEvent.mouseUp(window, { clientX: 30, clientY: C4_Y });
+    expect(grid).toHaveAttribute('data-pointer-focus', 'true');
+    grid.blur();
+    expect(grid).not.toHaveAttribute('data-pointer-focus');
+  });
+
   it('does not start a gesture with other mouse buttons', () => {
     const grid = renderGrid();
     fireEvent.mouseDown(grid, { clientX: 30, clientY: C4_Y, button: 2 });
@@ -215,6 +224,38 @@ describe('NoteGrid', () => {
     fireEvent.mouseMove(window, { clientX: 6500, clientY: C4_Y });
     expect(grid).toHaveStyle({ width: '7000px' });
     fireEvent.mouseUp(window, { clientX: 6500, clientY: C4_Y });
+  });
+
+  it('shows a tail while a sustained note keeps sounding', () => {
+    const sustain: PedalEvent = { id: 'p', type: 'sustain', start: 0.75, end: 2 };
+    renderGrid([noteA], undefined, [sustain]);
+    expect(screen.getByTestId('note-tail')).toHaveStyle({
+      left: '100px',
+      width: '100px',
+      top: '677px',
+      height: '4px',
+    });
+    expect(screen.getByTestId('note-tail')).toHaveAttribute('data-note-id', 'a');
+  });
+
+  it('shows no tail without pedals', () => {
+    renderGrid([noteA]);
+    expect(screen.queryByTestId('note-tail')).not.toBeInTheDocument();
+  });
+
+  it('updates the tail from the preview while a note is dragged', () => {
+    const sustain: PedalEvent = { id: 'p', type: 'sustain', start: 0.75, end: 2 };
+    const grid = renderGrid([noteA], undefined, [sustain]);
+    fireEvent.mouseDown(grid, { clientX: 60, clientY: C4_Y });
+    fireEvent.mouseMove(window, { clientX: 72, clientY: C4_Y });
+    expect(screen.getByTestId('note-tail')).toHaveStyle({ left: '112.5px', width: '87.5px' });
+    fireEvent.mouseUp(window, { clientX: 72, clientY: C4_Y });
+  });
+
+  it('widens the grid to fit pedals', () => {
+    const sustain: PedalEvent = { id: 'p', type: 'sustain', start: 0, end: 70.5 };
+    const grid = renderGrid([], undefined, [sustain]);
+    expect(grid).toHaveStyle({ width: '7600px' });
   });
 
   it('removes window listeners on unmount during a gesture', () => {

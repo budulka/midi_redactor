@@ -72,14 +72,20 @@ export function exceedsDragThreshold(dx: number, dy: number): boolean {
   return Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX;
 }
 
-/** Notes with the preview applied: replaces the note with the same id or appends it. */
-export function withPreview(notes: readonly Note[], preview: Note | null): readonly Note[] {
-  if (preview === null) return notes;
+/**
+ * Items (notes or pedals) with the preview applied: replaces the item with the same id or
+ * appends it.
+ */
+export function withPreview<T extends { readonly id: string }>(
+  items: readonly T[],
+  preview: T | null,
+): readonly T[] {
+  if (preview === null) return items;
   let replaced = false;
-  const next = notes.map((note) => {
-    if (note.id !== preview.id) return note;
+  const next = items.map((item) => {
+    if (item.id !== preview.id) return item;
     replaced = true;
     return preview;
   });
-  return replaced ? next : [...notes, preview];
+  return replaced ? next : [...items, preview];
 }

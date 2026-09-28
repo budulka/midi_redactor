@@ -26,11 +26,17 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return pixelsPerSecond === state.pixelsPerSecond ? state : { ...state, pixelsPerSecond };
     }
     case 'editor/selectNotes':
-      return sameIds(action.ids, state.selectedNoteIds)
+      return sameIds(action.ids, state.selectedNoteIds) && state.selectedPedalIds.length === 0
         ? state
-        : { ...state, selectedNoteIds: [...action.ids] };
+        : { ...state, selectedNoteIds: [...action.ids], selectedPedalIds: [] };
+    case 'editor/selectPedals':
+      return sameIds(action.ids, state.selectedPedalIds) && state.selectedNoteIds.length === 0
+        ? state
+        : { ...state, selectedNoteIds: [], selectedPedalIds: [...action.ids] };
     case 'editor/clearSelection':
-      return state.selectedNoteIds.length === 0 ? state : { ...state, selectedNoteIds: [] };
+      return state.selectedNoteIds.length === 0 && state.selectedPedalIds.length === 0
+        ? state
+        : { ...state, selectedNoteIds: [], selectedPedalIds: [] };
     default:
       return assertNever(action);
   }

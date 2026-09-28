@@ -13,6 +13,9 @@
   --grid-row-black: rgba(0, 0, 0, 0.18);
   --note: #5b9cf0;
   --note-selected: #f0b35b;
+  --pedal-sustain: #5fbf8a;
+  --pedal-sostenuto: #a98bf0;
+  --pedal-soft: #5bbbe0;
   --key-white: #eceef2;
   --key-black: #1f2127;
   color-scheme: dark;

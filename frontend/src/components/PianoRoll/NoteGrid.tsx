@@ -5,7 +5,9 @@ import { useEditor, useEditorDispatch } from '../../state/editorContext.ts';
 import { clearSelection, selectNotes, selectedNotes } from '../../state/editorState.ts';
 import { useProject, useProjectDispatch } from '../../state/projectContext.ts';
 import type { Note, NotePatch } from '../../state/types.ts';
+import { focusFromPointer } from '../../utils/focus.ts';
 import { withPreview, type DragOptions } from '../../utils/noteEditing.ts';
+import { noteSoundingEnds } from '../../utils/pedalEffects.ts';
 import {
   ROW_HEIGHT_PX,
   gridBackgroundImage,
@@ -13,6 +15,7 @@ import {
   gridLayers,
   hitTestNotes,
   noteRect,
+  noteTailRect,
   timelineDurationSeconds,
   velocityToOpacity,
   type Point,
@@ -50,6 +53,30 @@ const NoteView = memo(function NoteView({ note, geometry, selected }: NoteViewPr
   );
 });
 
+interface NoteTailViewProps {
+  note: Note;
+  soundingEnd: number;
+  geometry: ViewGeometry;
+}
+
+/** Thin bar after a note while it keeps sounding (sustain or sostenuto); not clickable. */
+const NoteTailView = memo(function NoteTailView({
+  note,
+  soundingEnd,
+  geometry,
+}: NoteTailViewProps) {
+  const rect = noteTailRect(note, soundingEnd, geometry);
+  if (rect === null) return null;
+  return (
+    <div
+      className="note-tail"
+      data-testid="note-tail"
+      data-note-id={note.id}
+      style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height }}
+    />
+  );
+});
+
 const GRID_ROWS = KEYBOARD_PITCHES.map((pitch) => (
   <div
     key={pitch}
@@ -67,7 +94,7 @@ export default function NoteGrid() {
   const { gridDivision, snapEnabled, pixelsPerSecond, selectedNoteIds } = useEditor();
   const editorDispatch = useEditorDispatch();
   const gridRef = useRef<HTMLDivElement>(null);
-  const { bpm, timeSignature, notes } = project;
+  const { bpm, timeSignature, notes, pedals } = project;
 
   const geometry = useMemo<ViewGeometry>(
     () => ({ pixelsPerSecond, rowHeight: ROW_HEIGHT_PX }),
@@ -98,13 +125,17 @@ export default function NoteGrid() {
 
   const displayed = withPreview(notes, preview);
   const selectedIds = useMemo(() => new Set(selectedNoteIds), [selectedNoteIds]);
-  const size = gridContentSize(timelineDurationSeconds(displayed, bpm, timeSignature), geometry);
+  const soundingEnds = useMemo(() => noteSoundingEnds(displayed, pedals), [displayed, pedals]);
+  const size = gridContentSize(
+    timelineDurationSeconds(displayed, bpm, timeSignature, pedals),
+    geometry,
+  );
   const background = gridBackgroundImage(
     gridLayers(bpm, timeSignature, gridDivision, pixelsPerSecond),
   );
 
   function handleMouseDown(event: MouseEvent<HTMLDivElement>) {
-    gridRef.current?.focus({ preventScroll: true });
+    focusFromPointer(gridRef.current);
     onMouseDown(event);
   }
 
@@ -141,6 +172,14 @@ export default function NoteGrid() {
       <div className="note-grid__rows" style={{ gridAutoRows: geometry.rowHeight }}>
         {GRID_ROWS}
       </div>
+      {displayed.map((note) => (
+        <NoteTailView
+          key={note.id}
+          note={note}
+          soundingEnd={soundingEnds.get(note.id) ?? note.start + note.duration}
+          geometry={geometry}
+        />
+      ))}
       {displayed.map((note) => (
         <NoteView
           key={note.id}

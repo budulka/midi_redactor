@@ -39,6 +39,7 @@
   min-height: 0;
   overflow: auto;
   display: grid;
+  align-content: start;
   background: var(--bg);
 }
 
@@ -123,11 +124,12 @@
 
 .note-grid {
   position: relative;
+  min-width: 100%;
   outline: none;
   cursor: crosshair;
 }
 
-.note-grid:focus-visible {
+.note-grid:focus-visible:not([data-pointer-focus]) {
   outline: 1px solid var(--note-selected);
   outline-offset: -1px;
 }
@@ -168,4 +170,101 @@
   bottom: 0;
   width: min(6px, 33%);
   cursor: ew-resize;
+}
+
+.note-tail {
+  position: absolute;
+  background: var(--note);
+  opacity: 0.45;
+  border-radius: 0 2px 2px 0;
+  pointer-events: none;
+}
+
+.piano-roll__pedal-labels {
+  position: sticky;
+  left: 0;
+  bottom: 0;
+  z-index: 3;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+.pedal-labels__label {
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  font-size: 11px;
+  color: var(--muted);
+  user-select: none;
+  cursor: default;
+}
+
+.piano-roll__pedals {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+}
+
+.pedal-lane {
+  position: relative;
+  min-width: 100%;
+  outline: none;
+  cursor: crosshair;
+}
+
+.pedal-lane:focus-visible:not([data-pointer-focus]) {
+  outline: 1px solid var(--note-selected);
+  outline-offset: -1px;
+}
+
+.pedal-lane__row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-bottom: 1px solid var(--grid-row);
+  pointer-events: none;
+}
+
+.pedal {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  border-radius: 2px;
+  cursor: grab;
+}
+
+.pedal--sustain {
+  background: var(--pedal-sustain);
+}
+
+.pedal--sostenuto {
+  background: var(--pedal-sostenuto);
+}
+
+.pedal--soft {
+  background: var(--pedal-soft);
+}
+
+.pedal--selected {
+  background: var(--note-selected);
+  border-color: #fff;
+}
+
+.pedal__handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: min(6px, 33%);
+  cursor: ew-resize;
+}
+
+.pedal__handle--start {
+  left: 0;
+}
+
+.pedal__handle--end {
+  right: 0;
 }
