@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Playwright
+test-results/
+playwright-report/
+
+# User media and exports
+*.mp3
+*.wav
+*.ogg
+*.aac
+*.m4a
+*.mp4
+*.webm
+*.mov
+*.mid
+*.midi
+!**/tests/fixtures/**
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Env
+.env
+.env.*
+
+# Claude Code local settings
+.claude/settings.local.json
