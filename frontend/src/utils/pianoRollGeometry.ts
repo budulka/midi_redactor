@@ -121,18 +121,22 @@ export function hitTestNotes(
 }
 
 /**
- * Timeline length: at least MIN_TIMELINE_SECONDS, two bars past the last note or pedal end,
- * whole bars.
+ * Timeline length: at least MIN_TIMELINE_SECONDS, two bars past the last note end, pedal end or
+ * the end of the loaded media, whole bars.
  */
 export function timelineDurationSeconds(
   notes: readonly Note[],
   bpm: number,
   ts: TimeSignature,
   pedals: readonly PedalEvent[] = [],
+  mediaDuration: number = 0,
 ): number {
   const bar = barDurationSeconds(bpm, ts);
-  const lastNoteEnd = notes.reduce((end, note) => Math.max(end, note.start + note.duration), 0);
-  const lastEnd = pedals.reduce((end, pedal) => Math.max(end, pedal.end), lastNoteEnd);
+  const lastNoteOrMediaEnd = notes.reduce(
+    (end, note) => Math.max(end, note.start + note.duration),
+    mediaDuration,
+  );
+  const lastEnd = pedals.reduce((end, pedal) => Math.max(end, pedal.end), lastNoteOrMediaEnd);
   const duration = Math.max(MIN_TIMELINE_SECONDS, lastEnd + 2 * bar);
   return Math.ceil(duration / bar - TIME_EPSILON) * bar;
 }
