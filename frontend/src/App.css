@@ -129,3 +129,33 @@ body {
 .tempo-controls__input--short {
   width: 48px;
 }
+
+.transport-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.transport-controls__play {
+  min-width: 110px;
+}
+
+.transport-controls__position {
+  min-width: 130px;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+}
+
+.transport-controls__follow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.transport-controls__error {
+  color: var(--err);
+  font-size: 13px;
+}
