@@ -11,6 +11,14 @@ export function clampPlaybackRate(rate: number): number {
   return Math.min(Math.max(rate, MIN_PLAYBACK_RATE), MAX_PLAYBACK_RATE);
 }
 
+/**
+ * Rate given to a media element whose base rate is nudged for drift correction. Never below
+ * MIN_PLAYBACK_RATE (Gecko mutes the sound under 0.25×); rounded to hide floating-point noise.
+ */
+export function nudgedPlaybackRate(rate: number, nudge: number): number {
+  return Math.max(MIN_PLAYBACK_RATE, Math.round(rate * nudge * 10000) / 10000);
+}
+
 export function formatPlaybackRate(rate: number): string {
   return `${rate}×`;
 }

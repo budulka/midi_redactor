@@ -4,6 +4,7 @@ import type { CreateMediaPlayer, CreateMediaPlayerOptions, MediaPlayer } from '.
 export class FakeMediaPlayer implements MediaPlayer {
   currentTime = 0;
   rate: number | null = null;
+  muted = false;
   destroyed = false;
   playError: Error | null = null;
   readonly calls: string[] = [];
@@ -36,6 +37,11 @@ export class FakeMediaPlayer implements MediaPlayer {
     this.rate = rate;
   }
 
+  setMuted(muted: boolean): void {
+    this.calls.push(`setMuted:${muted}`);
+    this.muted = muted;
+  }
+
   destroy(): void {
     this.calls.push('destroy');
     this.destroyed = true;
@@ -52,6 +58,11 @@ export class FakeMediaPlayer implements MediaPlayer {
   emitSeek(time: number): void {
     this.currentTime = time;
     this.options.events.onSeek(time);
+  }
+
+  /** Fires the play event without a play() call, as when something else started the media. */
+  emitPlay(): void {
+    this.options.events.onPlay();
   }
 
   emitPause(): void {

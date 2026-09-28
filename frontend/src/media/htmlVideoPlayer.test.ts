@@ -160,4 +160,12 @@ describe('createHtmlVideoPlayer', () => {
     player.setTime(3);
     expect(events.onSeek).not.toHaveBeenCalled();
   });
+
+  it('mutes the element', () => {
+    const { player, video } = setup();
+    player.setMuted(true);
+    expect(video.muted).toBe(true);
+    player.setMuted(false);
+    expect(video.muted).toBe(false);
+  });
 });

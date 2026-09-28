@@ -6,6 +6,7 @@ import TempoControls from './components/TempoControls.tsx';
 import TransportControls from './components/TransportControls.tsx';
 import VideoPlayer from './components/VideoPlayer.tsx';
 import AudioTrackProvider from './state/AudioTrackProvider.tsx';
+import MediaSyncBridge from './state/MediaSyncBridge.tsx';
 import EditorProvider from './state/EditorProvider.tsx';
 import ProjectProvider from './state/ProjectProvider.tsx';
 import TransportProvider from './state/TransportProvider.tsx';
@@ -18,6 +19,7 @@ export default function App() {
         <TransportProvider>
           <AudioTrackProvider>
             <VideoProvider>
+              <MediaSyncBridge />
               <div className="app">
                 <header className="app__transport" aria-label="Transport">
                   <h1 className="app__title">MIDI Redactor</h1>

@@ -10,7 +10,9 @@ import {
 import type { PianoEngine } from '../audio/engine.ts';
 import { loadPianoEngine } from '../audio/loadEngine.ts';
 import { Transport } from '../audio/Transport.ts';
+import { MediaSync } from '../media/MediaSync.ts';
 import { useProject } from './projectContext.ts';
+import { MediaDurationContext } from './timelineContext.ts';
 import {
   LIVE_VELOCITY,
   TransportApiContext,
@@ -35,8 +37,9 @@ class StaleEngineError extends Error {
 const ignore = () => undefined;
 
 /**
- * Owns the playback Transport and the piano engine. The engine (Tone.js and the samples) is
- * loaded on the first Play or keyboard press, because browsers only allow audio after a gesture.
+ * Owns the playback Transport, the piano engine and the synchronization of the media with the
+ * transport. The engine (Tone.js and the samples) is loaded on the first Play or keyboard press,
+ * because browsers only allow audio after a gesture.
  */
 export default function TransportProvider({
   children,
@@ -44,7 +47,9 @@ export default function TransportProvider({
 }: TransportProviderProps) {
   const project = useProject();
   const [transport] = useState(() => new Transport());
+  const [mediaSync] = useState(() => new MediaSync(transport));
   const snapshot = useSyncExternalStore(transport.subscribe, transport.getSnapshot);
+  const mediaDuration = useSyncExternalStore(mediaSync.subscribe, mediaSync.getMediaDuration);
   const [engineStatus, setEngineStatus] = useState<EngineStatus>('idle');
   const [engineError, setEngineError] = useState<string | null>(null);
 
@@ -64,6 +69,10 @@ export default function TransportProvider({
   }, [transport, project]);
 
   useEffect(() => {
+    transport.setMediaDuration(mediaDuration);
+  }, [transport, mediaDuration]);
+
+  useEffect(() => {
     disposedRef.current = false;
     const held = heldRef.current;
     return () => {
@@ -72,13 +81,15 @@ export default function TransportProvider({
       loadingRef.current = null;
       held.clear();
       transport.stop();
+      // After stop(), so the media has been paused at the start by the synchronization.
+      mediaSync.detachAll();
       engineRef.current?.dispose();
       engineRef.current = null;
       transport.setEngine(null);
       setEngineStatus('idle');
       setEngineError(null);
     };
-  }, [transport]);
+  }, [transport, mediaSync]);
 
   const api = useMemo<TransportApi>(() => {
     const ensureEngine = (): Promise<PianoEngine> => {
@@ -134,6 +145,8 @@ export default function TransportProvider({
       stop: () => transport.stop(),
       seek: (position) => transport.seek(position),
       getPosition: () => transport.getPosition(),
+      setRate: (rate) => transport.setRate(rate),
+      attachMedia: (track) => mediaSync.attach(track),
       noteOn(pitch) {
         heldRef.current.add(pitch);
         const engine = engineRef.current;
@@ -157,12 +170,13 @@ export default function TransportProvider({
         ensureEngine().catch(ignore);
       },
     };
-  }, [transport]);
+  }, [transport, mediaSync]);
 
   const state = useMemo<TransportState>(
     () => ({
       status: snapshot.status,
       position: snapshot.position,
+      rate: snapshot.rate,
       engineStatus,
       engineError,
     }),
@@ -171,7 +185,11 @@ export default function TransportProvider({
 
   return (
     <TransportStateContext.Provider value={state}>
-      <TransportApiContext.Provider value={api}>{children}</TransportApiContext.Provider>
+      <TransportApiContext.Provider value={api}>
+        <MediaDurationContext.Provider value={mediaDuration}>
+          {children}
+        </MediaDurationContext.Provider>
+      </TransportApiContext.Provider>
     </TransportStateContext.Provider>
   );
 }

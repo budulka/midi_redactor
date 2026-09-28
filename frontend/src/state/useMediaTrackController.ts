@@ -3,11 +3,14 @@ import type { MediaTrackController, MediaTrackSnapshot } from '../media/MediaTra
 
 /** Stable media track commands; the same object for the whole lifetime of the controller. */
 export interface MediaTrackApi {
+  /** The controller itself, for the transport synchronization. */
+  readonly controller: MediaTrackController;
   loadFile(file: File, container: HTMLElement): void;
   clear(): void;
   togglePlay(): void;
   seek(seconds: number): void;
   setRate(rate: number): void;
+  setMuted(muted: boolean): void;
   /** Live position while playing (read it in animation frames, it does not trigger renders). */
   getCurrentTime(): number;
 }
@@ -28,11 +31,13 @@ export function useMediaTrackController(create: () => MediaTrackController): {
 
   const api = useMemo<MediaTrackApi>(
     () => ({
+      controller,
       loadFile: (file, container) => controller.load(file, container),
       clear: () => controller.clear(),
       togglePlay: () => controller.togglePlay(),
       seek: (seconds) => controller.seek(seconds),
       setRate: (rate) => controller.setRate(rate),
+      setMuted: (muted) => controller.setMuted(muted),
       getCurrentTime: () => controller.getCurrentTime(),
     }),
     [controller],

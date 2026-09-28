@@ -19,6 +19,7 @@ export interface MediaPlayer {
   getCurrentTime(): number;
   /** Always preserves pitch. */
   setPlaybackRate(rate: number): void;
+  setMuted(muted: boolean): void;
   destroy(): void;
 }
 

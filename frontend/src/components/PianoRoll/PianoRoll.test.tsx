@@ -6,6 +6,7 @@ import TransportProvider from '../../state/TransportProvider.tsx';
 import * as idModule from '../../utils/id.ts';
 import ProjectInfo from '../ProjectInfo.tsx';
 import PianoRoll from './PianoRoll.tsx';
+import { MediaDurationContext } from '../../state/timelineContext.ts';
 
 let engine: FakePianoEngine;
 
@@ -112,5 +113,19 @@ describe('PianoRoll', () => {
     renderPianoRoll();
     fireEvent.mouseDown(screen.getByLabelText('Time ruler'), { clientX: 250, button: 0 });
     expect(screen.getByTestId('playhead')).toHaveStyle({ transform: 'translateX(250px)' });
+  });
+  it('extends the ruler to the end of the loaded media', () => {
+    render(
+      <ProjectProvider>
+        <EditorProvider>
+          <TransportProvider loadEngine={() => Promise.resolve(engine)}>
+            <MediaDurationContext.Provider value={90}>
+              <PianoRoll />
+            </MediaDurationContext.Provider>
+          </TransportProvider>
+        </EditorProvider>
+      </ProjectProvider>,
+    );
+    expect(screen.getByLabelText('Time ruler')).toHaveStyle({ width: '9400px' });
   });
 });

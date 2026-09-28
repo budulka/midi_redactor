@@ -127,4 +127,25 @@ describe('TransportControls', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Follow' }));
     expect(readEditor(screen).followPlayhead).toBe(false);
   });
+  it('offers one playback speed for notes and media', () => {
+    setup();
+    const speed = screen.getByRole('combobox', { name: 'Playback speed' });
+    expect(speed).toHaveValue('1');
+    expect(screen.getAllByRole('option')).toHaveLength(8);
+  });
+
+  it('plays at the chosen speed', async () => {
+    const { loads } = setup();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Playback speed' }), {
+      target: { value: '0.5' },
+    });
+    const engine = new FakePianoEngine();
+    fireEvent.click(screen.getByRole('button', { name: 'Play' }));
+    await act(async () => {
+      loads[0].resolve(engine);
+    });
+    engine.time = 1.05;
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    expect(position()).toHaveTextContent('0:00.500 · 1.2');
+  });
 });

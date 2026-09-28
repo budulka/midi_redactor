@@ -61,11 +61,11 @@ describe('VideoPlayer', () => {
     setup();
     expect(fileInput()).toHaveAttribute('accept', VIDEO_FILE_ACCEPT);
     expect(screen.getByText(/MP4, WebM/)).toBeInTheDocument();
-    for (const name of ['Play video', 'Back 5 seconds', 'Forward 5 seconds', 'Remove video']) {
+    for (const name of ['Back 5 seconds', 'Forward 5 seconds', 'Remove video']) {
       expect(button(name)).toBeDisabled();
     }
     expect(slider()).toBeDisabled();
-    expect(screen.getByRole('combobox', { name: 'Video speed' })).toHaveValue('1');
+    expect(screen.queryByRole('combobox', { name: 'Video speed' })).toBeNull();
     expect(position()).toHaveTextContent('0:00.000 / 0:00.000');
   });
 
@@ -81,9 +81,10 @@ describe('VideoPlayer', () => {
     loadReady(player);
     expect(screen.getByText('clip.mp4')).toBeInTheDocument();
     expect(position()).toHaveTextContent('0:00.000 / 1:05.000');
-    for (const name of ['Play video', 'Back 5 seconds', 'Forward 5 seconds', 'Remove video']) {
+    for (const name of ['Back 5 seconds', 'Forward 5 seconds', 'Remove video']) {
       expect(button(name)).toBeEnabled();
     }
+    expect(screen.queryByRole('combobox', { name: 'Video speed' })).toBeNull();
     expect(slider()).toBeEnabled();
     expect(slider()).toHaveAttribute('max', '65');
     expect(slider().value).toBe('0');
@@ -120,30 +121,40 @@ describe('VideoPlayer', () => {
     expect(ready.calls).toContain('setTime:65');
   });
 
-  it('plays, follows the position and pauses', () => {
+  it('follows the position while the video plays', () => {
     const { player } = setup();
     const ready = loadReady(player);
-    fireEvent.click(button('Play video'));
-    expect(ready.calls).toContain('play');
-    expect(button('Pause video')).toBeInTheDocument();
+    act(() => ready.emitPlay());
 
     ready.currentTime = 2.5;
     frames.flushFrame();
     expect(position()).toHaveTextContent('0:02.500 / 1:05.000');
     expect(slider().value).toBe('2.5');
 
-    fireEvent.click(button('Pause video'));
-    expect(button('Play video')).toBeInTheDocument();
+    act(() => ready.emitPause());
     expect(frames.cancelAnimationFrame).toHaveBeenCalled();
   });
 
-  it('changes the speed', () => {
+  it('has no own play, pause or speed controls', () => {
+    const { player } = setup();
+    loadReady(player);
+    for (const name of ['Play video', 'Pause video']) {
+      expect(screen.queryByRole('button', { name })).toBeNull();
+    }
+    expect(screen.queryByRole('combobox', { name: 'Video speed' })).toBeNull();
+  });
+
+  it('mutes the video', () => {
     const { player } = setup();
     const ready = loadReady(player);
-    fireEvent.change(screen.getByRole('combobox', { name: 'Video speed' }), {
-      target: { value: '0.5' },
-    });
-    expect(ready.calls).toContain('setPlaybackRate:0.5');
+    const mute = screen.getByRole('checkbox', { name: 'Mute video' });
+    expect(mute).not.toBeChecked();
+    fireEvent.click(mute);
+    expect(ready.calls.at(-1)).toBe('setMuted:true');
+    expect(mute).toBeChecked();
+    fireEvent.click(mute);
+    expect(ready.calls.at(-1)).toBe('setMuted:false');
+    expect(mute).not.toBeChecked();
   });
 
   it('explains an unsupported file and keeps the loaded video', () => {

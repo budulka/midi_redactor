@@ -115,6 +115,18 @@ describe('timelineDurationSeconds', () => {
     expect(timelineDurationSeconds([], 120, fourFour, [pedal])).toBe(76);
     expect(timelineDurationSeconds([], 120, fourFour)).toBe(60);
   });
+
+  it('extends past the end of the loaded media', () => {
+    expect(timelineDurationSeconds([], 120, fourFour, [], 90)).toBe(94);
+    expect(timelineDurationSeconds([], 120, fourFour, [], 30)).toBe(60);
+    expect(timelineDurationSeconds([], 120, fourFour, [], 90.3)).toBe(96);
+  });
+
+  it('uses the later of the last note end and the media end', () => {
+    expect(timelineDurationSeconds([note('a', 60, 70, 0.5)], 120, fourFour, [], 50)).toBe(76);
+    expect(timelineDurationSeconds([note('a', 60, 68, 2)], 120, fourFour, [], 50)).toBe(74);
+    expect(timelineDurationSeconds([note('a', 60, 68, 2)], 120, fourFour, [], 80)).toBe(84);
+  });
 });
 
 describe('noteTailRect', () => {

@@ -18,6 +18,7 @@ import PianoRollToolbar from './PianoRollToolbar.tsx';
 import Playhead from './Playhead.tsx';
 import TimeRuler from './TimeRuler.tsx';
 import './PianoRoll.css';
+import { useMediaDuration } from '../../state/timelineContext.ts';
 
 const CENTER_PITCH = 60;
 
@@ -31,7 +32,8 @@ export default function PianoRoll() {
   const { pixelsPerSecond } = useEditor();
   const api = useTransportApi();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const durationSeconds = timelineDurationSeconds(notes, bpm, timeSignature, pedals);
+  const mediaDuration = useMediaDuration();
+  const durationSeconds = timelineDurationSeconds(notes, bpm, timeSignature, pedals, mediaDuration);
 
   useLayoutEffect(() => {
     const scroller = scrollRef.current;

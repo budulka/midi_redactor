@@ -61,6 +61,7 @@ describe('AudioTrackController', () => {
       playing: false,
       position: 0,
       rate: 1,
+      muted: false,
       error: null,
     });
   });
@@ -342,6 +343,7 @@ describe('AudioTrackController', () => {
         playing: false,
         position: 0,
         rate: 0.75,
+        muted: false,
         error: null,
       });
     });

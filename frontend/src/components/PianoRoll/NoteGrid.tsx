@@ -24,6 +24,7 @@ import {
 import { KEYBOARD_PITCHES, isBlackKey, pitchName } from '../../utils/pitch.ts';
 import { gridStepSeconds } from '../../utils/quantize.ts';
 import { useNoteDrag } from './useNoteDrag.ts';
+import { useMediaDuration } from '../../state/timelineContext.ts';
 
 interface NoteViewProps {
   note: Note;
@@ -125,9 +126,10 @@ export default function NoteGrid() {
 
   const displayed = withPreview(notes, preview);
   const selectedIds = useMemo(() => new Set(selectedNoteIds), [selectedNoteIds]);
+  const mediaDuration = useMediaDuration();
   const soundingEnds = useMemo(() => noteSoundingEnds(displayed, pedals), [displayed, pedals]);
   const size = gridContentSize(
-    timelineDurationSeconds(displayed, bpm, timeSignature, pedals),
+    timelineDurationSeconds(displayed, bpm, timeSignature, pedals, mediaDuration),
     geometry,
   );
   const background = gridBackgroundImage(

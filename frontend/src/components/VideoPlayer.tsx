@@ -4,7 +4,6 @@ import { ceilToStep, seekSliderValue } from '../utils/seekSlider.ts';
 import { formatMediaPosition } from '../utils/transportFormat.ts';
 import { VIDEO_FILE_ACCEPT } from '../utils/videoFormats.ts';
 import FileLoadButton from './FileLoadButton.tsx';
-import PlaybackRateSelect from './PlaybackRateSelect.tsx';
 import { useFileDrop } from './useFileDrop.ts';
 import { useLivePosition } from './useLivePosition.ts';
 
@@ -13,9 +12,12 @@ export const SEEK_STEP_SECONDS = 0.1;
 /** Jump of the back/forward buttons. */
 export const SKIP_SECONDS = 5;
 
-/** Video file loading, picture, play/pause, seeking and speed of the video panel. */
+/**
+ * Video file loading, picture, seeking and mute of the video panel. Playback and speed follow the
+ * transport; seeking here seeks the whole timeline.
+ */
 export default function VideoPlayer() {
-  const { status, fileName, duration, playing, position, rate, error } = useVideoState();
+  const { status, fileName, duration, playing, position, muted, error } = useVideoState();
   const api = useVideoApi();
   const screenRef = useRef<HTMLDivElement>(null);
   const positionRef = useRef<HTMLOutputElement>(null);
@@ -89,15 +91,6 @@ export default function VideoPlayer() {
       <div className="video-player__controls" role="group" aria-label="Video playback">
         <button
           type="button"
-          className="video-player__play"
-          aria-label={playing ? 'Pause video' : 'Play video'}
-          disabled={!ready}
-          onClick={api.togglePlay}
-        >
-          {playing ? 'Pause' : 'Play'}
-        </button>
-        <button
-          type="button"
           aria-label="Back 5 seconds"
           disabled={!ready}
           onClick={() => skip(-SKIP_SECONDS)}
@@ -113,7 +106,15 @@ export default function VideoPlayer() {
           +5 s
         </button>
         <output ref={positionRef} className="video-player__position" aria-label="Video position" />
-        <PlaybackRateSelect label="Video speed" value={rate} onChange={api.setRate} />
+        <label className="video-player__mute">
+          <input
+            type="checkbox"
+            aria-label="Mute video"
+            checked={muted}
+            onChange={(event) => api.setMuted(event.currentTarget.checked)}
+          />
+          Mute
+        </label>
       </div>
       {error !== null && (
         <p role="alert" className="video-player__error">

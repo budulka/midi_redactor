@@ -1,5 +1,9 @@
 import type { MediaFormat, NamedFile } from '../utils/mediaFormats.ts';
-import { clampPlaybackRate, DEFAULT_PLAYBACK_RATE } from '../utils/playbackRate.ts';
+import {
+  clampPlaybackRate,
+  DEFAULT_PLAYBACK_RATE,
+  nudgedPlaybackRate,
+} from '../utils/playbackRate.ts';
 import { isAbortError } from './errors.ts';
 import type { CreateMediaPlayer, MediaPlayer } from './mediaPlayer.ts';
 
@@ -15,6 +19,8 @@ export interface MediaTrackSnapshot {
   /** Cue position: updated on ready, pause, seek and finish, not while playing. */
   readonly position: number;
   readonly rate: number;
+  /** Kept between files, like the rate. */
+  readonly muted: boolean;
   /** The last error message. */
   readonly error: string | null;
 }
@@ -46,6 +52,7 @@ export const EMPTY_MEDIA_TRACK_SNAPSHOT: MediaTrackSnapshot = {
   playing: false,
   position: 0,
   rate: DEFAULT_PLAYBACK_RATE,
+  muted: false,
   error: null,
 };
 
@@ -64,7 +71,10 @@ export class MediaTrackController<F extends MediaFormat = MediaFormat> {
   private url: string | null = null;
   private generation = 0;
   private snapshot: MediaTrackSnapshot = EMPTY_MEDIA_TRACK_SNAPSHOT;
+  /** Factor of the rate for drift correction; not part of the snapshot. */
+  private nudge = 1;
   private readonly listeners = new Set<() => void>();
+  private readonly seekListeners = new Set<(seconds: number) => void>();
 
   constructor(options: MediaTrackControllerOptions<F>) {
     this.createPlayer = options.createPlayer;
@@ -90,6 +100,7 @@ export class MediaTrackController<F extends MediaFormat = MediaFormat> {
     const isCurrent = () => generation === this.generation;
     const url = this.createObjectUrl(file);
     this.url = url;
+    this.nudge = 1;
     this.snapshot = {
       status: 'loading',
       fileName: file.name,
@@ -97,6 +108,7 @@ export class MediaTrackController<F extends MediaFormat = MediaFormat> {
       playing: false,
       position: 0,
       rate: this.snapshot.rate,
+      muted: this.snapshot.muted,
       error: null,
     };
     this.player = this.createPlayer({
@@ -106,11 +118,14 @@ export class MediaTrackController<F extends MediaFormat = MediaFormat> {
         onReady: (duration) => {
           if (!isCurrent()) return;
           this.player?.setPlaybackRate(this.snapshot.rate);
+          if (this.snapshot.muted) this.player?.setMuted(true);
           this.update({ status: 'ready', duration, position: 0 });
         },
         onPlay: () => {
           if (!isCurrent()) return;
-          this.update({ playing: true });
+          const error =
+            this.snapshot.error === this.messages.playFailed ? null : this.snapshot.error;
+          this.update({ playing: true, error });
         },
         onPause: () => {
           if (!isCurrent()) return;
@@ -122,6 +137,7 @@ export class MediaTrackController<F extends MediaFormat = MediaFormat> {
         },
         onSeek: (time) => {
           if (!isCurrent()) return;
+          this.notifySeek(time);
           this.update({ position: time });
         },
         onError: () => {
@@ -130,6 +146,7 @@ export class MediaTrackController<F extends MediaFormat = MediaFormat> {
           this.snapshot = {
             ...EMPTY_MEDIA_TRACK_SNAPSHOT,
             rate: this.snapshot.rate,
+            muted: this.snapshot.muted,
             error: this.messages.loadFailed(file.name),
           };
           this.notify();
@@ -142,7 +159,11 @@ export class MediaTrackController<F extends MediaFormat = MediaFormat> {
   clear(): void {
     if (this.snapshot.status === 'empty' && this.snapshot.error === null) return;
     this.releaseTrack();
-    this.snapshot = { ...EMPTY_MEDIA_TRACK_SNAPSHOT, rate: this.snapshot.rate };
+    this.snapshot = {
+      ...EMPTY_MEDIA_TRACK_SNAPSHOT,
+      rate: this.snapshot.rate,
+      muted: this.snapshot.muted,
+    };
     this.notify();
   }
 
@@ -175,14 +196,50 @@ export class MediaTrackController<F extends MediaFormat = MediaFormat> {
     if (this.snapshot.status !== 'ready' || player === null) return;
     const target = Math.min(Math.max(seconds, 0), this.snapshot.duration);
     player.setTime(target);
+    // Seek listeners run before the snapshot changes, so a clock that follows them has already
+    // moved when snapshot listeners see the new position.
+    this.notifySeek(target);
     this.update({ position: target });
+  }
+
+  /** Moves the media for synchronization: like seek(), but seek listeners are not called. */
+  syncTo(seconds: number): void {
+    const player = this.player;
+    if (this.snapshot.status !== 'ready' || player === null) return;
+    const target = Math.min(Math.max(seconds, 0), this.snapshot.duration);
+    player.setTime(target);
+    this.update({ position: target });
+  }
+
+  /** Calls the listener when the user moves the position: seek() and the player's own onSeek. */
+  subscribeSeek(listener: (seconds: number) => void): () => void {
+    this.seekListeners.add(listener);
+    return () => {
+      this.seekListeners.delete(listener);
+    };
   }
 
   setRate(rate: number): void {
     const next = clampPlaybackRate(rate);
-    if (next === this.snapshot.rate) return;
+    const nudged = this.nudge !== 1;
+    this.nudge = 1;
+    if (next === this.snapshot.rate && !nudged) return;
     if (this.snapshot.status === 'ready') this.player?.setPlaybackRate(next);
+    if (next === this.snapshot.rate) return;
     this.update({ rate: next });
+  }
+
+  /** Multiplies the base rate for drift correction; not part of the snapshot. */
+  setRateNudge(factor: number): void {
+    if (this.snapshot.status !== 'ready' || factor === this.nudge) return;
+    this.nudge = factor;
+    this.player?.setPlaybackRate(nudgedPlaybackRate(this.snapshot.rate, factor));
+  }
+
+  setMuted(muted: boolean): void {
+    if (muted === this.snapshot.muted) return;
+    if (this.snapshot.status === 'ready') this.player?.setMuted(muted);
+    this.update({ muted });
   }
 
   /** Live position while ready (read it in animation frames), the cue position otherwise. */
@@ -212,6 +269,10 @@ export class MediaTrackController<F extends MediaFormat = MediaFormat> {
     this.url = null;
     player?.destroy();
     if (url !== null) this.revokeObjectUrl(url);
+  }
+
+  private notifySeek(seconds: number): void {
+    for (const listener of [...this.seekListeners]) listener(seconds);
   }
 
   private update(changes: Partial<MediaTrackSnapshot>): void {

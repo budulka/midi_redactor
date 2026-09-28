@@ -9,6 +9,9 @@ import { useProjectDispatch } from './projectContext.ts';
 import TransportProvider from './TransportProvider.tsx';
 import { useTransportApi, useTransportState, type TransportState } from './transportContext.ts';
 import type { Note, Project } from './types.ts';
+import { AudioTrackController } from '../audio/AudioTrackController.ts';
+import { createFakeMediaPlayers, type FakeMediaPlayer } from '../media/testing/FakeMediaPlayer.ts';
+import { useMediaDuration } from './timelineContext.ts';
 
 interface Deferred {
   promise: Promise<PianoEngine>;
@@ -116,6 +119,7 @@ describe('TransportProvider', () => {
     expect(readState()).toEqual({
       status: 'stopped',
       position: 0,
+      rate: 1,
       engineStatus: 'idle',
       engineError: null,
     });
@@ -258,5 +262,112 @@ describe('TransportProvider', () => {
       return null;
     }
     expect(() => render(<Orphan />)).toThrow('useTransportApi must be used within');
+  });
+});
+
+describe('TransportProvider media synchronization', () => {
+  function MediaProbe({ controller }: { controller: AudioTrackController }) {
+    const state = useTransportState();
+    const api = useTransportApi();
+    const mediaDuration = useMediaDuration();
+    return (
+      <>
+        <pre data-testid="transport">{JSON.stringify(state)}</pre>
+        <output aria-label="media duration">{mediaDuration}</output>
+        <button type="button" onClick={api.togglePlay}>
+          toggle
+        </button>
+        <button type="button" onClick={() => api.setRate(0.5)}>
+          half
+        </button>
+        <button type="button" onClick={() => api.attachMedia(controller)}>
+          attach
+        </button>
+      </>
+    );
+  }
+
+  function setupMedia() {
+    const fake = createFakeMediaPlayers();
+    const controller = new AudioTrackController({
+      createPlayer: fake.create,
+      canPlayType: () => true,
+      createObjectUrl: () => 'blob:a',
+      revokeObjectUrl: () => undefined,
+    });
+    const engine = new FakePianoEngine();
+    const view = render(
+      <ProjectProvider>
+        <EditorProvider>
+          <TransportProvider loadEngine={() => Promise.resolve(engine)}>
+            <MediaProbe controller={controller} />
+          </TransportProvider>
+        </EditorProvider>
+      </ProjectProvider>,
+    );
+    const loadReady = (duration: number): FakeMediaPlayer => {
+      act(() => {
+        controller.load(new File(['a'], 'a.mp3'), document.createElement('div'));
+      });
+      const player = fake.players.at(-1);
+      if (player === undefined) throw new Error('no player');
+      act(() => player.emitReady(duration));
+      return player;
+    };
+    const play = async () => {
+      await act(async () => {
+        screen.getByRole('button', { name: 'toggle' }).click();
+        await Promise.resolve();
+      });
+    };
+    return { view, controller, engine, loadReady, play };
+  }
+
+  it('changes the rate', () => {
+    setupMedia();
+    click('half');
+    expect(readState().rate).toBe(0.5);
+  });
+
+  it('extends the transport to the attached media', async () => {
+    const { engine, loadReady, play } = setupMedia();
+    click('attach');
+    loadReady(90);
+    expect(screen.getByRole('status', { name: 'media duration' }).textContent).toBe('90');
+    await play();
+    expect(readState().status).toBe('playing');
+    engine.time = 94.06;
+    act(() => engine.tick());
+    expect(readState().status).toBe('paused');
+  });
+
+  it('plays and pauses the attached media with the transport', async () => {
+    const { loadReady, play } = setupMedia();
+    click('attach');
+    const player = loadReady(30);
+    await play();
+    expect(player.calls).toContain('play');
+    click('toggle');
+    expect(player.calls.at(-1)).toBe('pause');
+  });
+
+  it('stops the media before detaching it on unmount', async () => {
+    const { view, engine, loadReady, play } = setupMedia();
+    click('attach');
+    const player = loadReady(30);
+    await play();
+    engine.time = 2;
+    player.currentTime = 1.95;
+    player.calls.length = 0;
+    view.unmount();
+    expect(player.calls).toEqual(['pause', 'setTime:0']);
+  });
+
+  it('has no media duration outside the provider', () => {
+    function Orphan() {
+      return <output aria-label="orphan">{useMediaDuration()}</output>;
+    }
+    render(<Orphan />);
+    expect(screen.getByRole('status', { name: 'orphan' }).textContent).toBe('0');
   });
 });

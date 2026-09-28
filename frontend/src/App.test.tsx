@@ -57,8 +57,7 @@ describe('App', () => {
     const audio = within(screen.getByRole('region', { name: 'Audio track' }));
     expect(audio.getByLabelText('Audio file')).toBeInTheDocument();
     const playback = within(audio.getByRole('group', { name: 'Audio playback' }));
-    expect(playback.getByRole('button', { name: 'Play audio' })).toBeDisabled();
-    expect(playback.getByRole('combobox', { name: 'Audio speed' })).toBeInTheDocument();
+    expect(playback.getByRole('status', { name: 'Audio position' })).toBeInTheDocument();
     expect(createWaveSurferPlayer).not.toHaveBeenCalled();
     expect(await screen.findByText('backend: online')).toBeInTheDocument();
   });
@@ -68,21 +67,31 @@ describe('App', () => {
     const video = within(screen.getByRole('region', { name: 'Video' }));
     expect(video.getByLabelText('Video file')).toBeInTheDocument();
     const playback = within(video.getByRole('group', { name: 'Video playback' }));
-    expect(playback.getByRole('button', { name: 'Play video' })).toBeDisabled();
-    expect(playback.getByRole('combobox', { name: 'Video speed' })).toBeInTheDocument();
+    expect(playback.getByRole('status', { name: 'Video position' })).toBeInTheDocument();
+    expect(playback.getByRole('checkbox', { name: 'Mute video' })).toBeInTheDocument();
     expect(video.getByRole('slider', { name: 'Seek video' })).toBeInTheDocument();
     expect(createHtmlVideoPlayer).not.toHaveBeenCalled();
     expect(await screen.findByText('backend: online')).toBeInTheDocument();
   });
 
-  it('keeps the MIDI, audio and video controls apart', async () => {
+  it('has one playback transport for MIDI, audio and video', async () => {
     render(<App />);
-    expect(screen.getByRole('group', { name: 'Playback' })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Audio playback' })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Video playback' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Play audio' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Play video' })).toBeInTheDocument();
+    const playback = within(screen.getByRole('group', { name: 'Playback' }));
+    expect(playback.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    expect(playback.getByRole('button', { name: 'Stop' })).toBeInTheDocument();
+    expect(playback.getByRole('combobox', { name: 'Playback speed' })).toBeInTheDocument();
+    for (const name of ['Play audio', 'Play video']) {
+      expect(screen.queryByRole('button', { name })).toBeNull();
+    }
+    for (const name of ['Audio speed', 'Video speed']) {
+      expect(screen.queryByRole('combobox', { name })).toBeNull();
+    }
+    const video = within(screen.getByRole('region', { name: 'Video' }));
+    expect(video.getByRole('checkbox', { name: 'Mute video' })).toBeInTheDocument();
+    expect(video.getByRole('slider', { name: 'Seek video' })).toBeInTheDocument();
+    expect(createWaveSurferPlayer).not.toHaveBeenCalled();
+    expect(createHtmlVideoPlayer).not.toHaveBeenCalled();
+    expect(loadPianoEngine).not.toHaveBeenCalled();
     expect(await screen.findByText('backend: online')).toBeInTheDocument();
   });
 });

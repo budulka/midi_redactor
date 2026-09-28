@@ -94,6 +94,9 @@ export const createHtmlVideoPlayer: CreateMediaPlayer = ({ container, url, event
       video.preservesPitch = true;
       video.playbackRate = rate;
     },
+    setMuted: (muted) => {
+      video.muted = muted;
+    },
     destroy: () => {
       listeners.abort();
       video.pause();
