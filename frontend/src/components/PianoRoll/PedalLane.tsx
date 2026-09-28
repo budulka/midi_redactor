@@ -25,6 +25,7 @@ import {
 } from '../../utils/pianoRollGeometry.ts';
 import { gridStepSeconds } from '../../utils/quantize.ts';
 import { usePedalDrag } from './usePedalDrag.ts';
+import { useMediaDuration } from '../../state/timelineContext.ts';
 
 function pedalDescription(pedal: PedalEvent): string {
   return `${PEDAL_LABELS[pedal.type]} from ${pedal.start.toFixed(2)} s to ${pedal.end.toFixed(2)} s`;
@@ -108,7 +109,9 @@ export default function PedalLane() {
 
   const displayed = withPreview(pedals, preview);
   const selectedIds = useMemo(() => new Set(selectedPedalIds), [selectedPedalIds]);
-  const width = timelineDurationSeconds(notes, bpm, timeSignature, displayed) * pixelsPerSecond;
+  const mediaDuration = useMediaDuration();
+  const width =
+    timelineDurationSeconds(notes, bpm, timeSignature, displayed, mediaDuration) * pixelsPerSecond;
   const background = gridBackgroundImage(
     gridLayers(bpm, timeSignature, gridDivision, pixelsPerSecond),
   );

@@ -4,11 +4,15 @@ import { setFollowPlayhead } from '../state/editorState.ts';
 import { useProject } from '../state/projectContext.ts';
 import { useTransportApi, useTransportState } from '../state/transportContext.ts';
 import { formatBarBeat, formatClock } from '../utils/transportFormat.ts';
+import PlaybackRateSelect from './PlaybackRateSelect.tsx';
 import { useAnimationFrame } from './useAnimationFrame.ts';
 
-/** Play/Pause, Stop, the playback position and the Follow switch. */
+/**
+ * Play/Pause, Stop and the speed of the one transport for notes, audio and video, the playback
+ * position and the Follow switch.
+ */
 export default function TransportControls() {
-  const { status, position, engineStatus } = useTransportState();
+  const { status, position, rate, engineStatus } = useTransportState();
   const api = useTransportApi();
   const { bpm, timeSignature } = useProject();
   const { followPlayhead } = useEditor();
@@ -46,6 +50,7 @@ export default function TransportControls() {
       <button type="button" disabled={status === 'stopped' && position === 0} onClick={api.stop}>
         Stop
       </button>
+      <PlaybackRateSelect label="Playback speed" value={rate} onChange={api.setRate} />
       <output
         ref={positionRef}
         className="transport-controls__position"

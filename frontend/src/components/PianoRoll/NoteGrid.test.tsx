@@ -6,6 +6,7 @@ import { useProject } from '../../state/projectContext.ts';
 import type { Note, PedalEvent, Project } from '../../state/types.ts';
 import * as idModule from '../../utils/id.ts';
 import NoteGrid from './NoteGrid.tsx';
+import { MediaDurationContext } from '../../state/timelineContext.ts';
 
 const noteA: Note = { id: 'a', pitch: 60, start: 0.5, duration: 0.5, velocity: 100 };
 const C4_Y = 679;
@@ -281,5 +282,23 @@ describe('NoteGrid', () => {
     expect(removeSpy).toHaveBeenCalledWith('mousemove', expect.any(Function));
     expect(removeSpy).toHaveBeenCalledWith('mouseup', expect.any(Function));
     expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
+  });
+  it('extends the grid to the end of the loaded media', () => {
+    render(
+      <ProjectProvider>
+        <EditorProvider>
+          <MediaDurationContext.Provider value={90}>
+            <NoteGrid />
+          </MediaDurationContext.Provider>
+        </EditorProvider>
+      </ProjectProvider>,
+    );
+    expect(screen.getByRole('application', { name: 'Note grid' })).toHaveStyle({
+      width: '9400px',
+    });
+  });
+
+  it('keeps the minimum grid length without media', () => {
+    expect(renderGrid()).toHaveStyle({ width: '6000px' });
   });
 });

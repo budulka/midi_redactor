@@ -62,9 +62,9 @@ describe('AudioTrack', () => {
     setup();
     expect(fileInput()).toHaveAttribute('accept', AUDIO_FILE_ACCEPT);
     expect(screen.getByText(/MP3, WAV, OGG, AAC, M4A/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Play audio' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Play audio' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Remove audio' })).toBeDisabled();
-    expect(screen.getByRole('combobox', { name: 'Audio speed' })).toHaveValue('1');
+    expect(screen.queryByRole('combobox', { name: 'Audio speed' })).toBeNull();
     expect(position()).toHaveTextContent('0:00.000 / 0:00.000');
   });
 
@@ -81,23 +81,30 @@ describe('AudioTrack', () => {
     loadReady(player);
     expect(screen.getByText('song.mp3')).toBeInTheDocument();
     expect(position()).toHaveTextContent('0:00.000 / 1:05.000');
-    expect(screen.getByRole('button', { name: 'Play audio' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Play audio' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Audio speed' })).toBeNull();
   });
 
-  it('plays, follows the position and pauses', () => {
+  it('follows the position while the audio plays', () => {
     const { player } = setup();
     const ready = loadReady(player);
-    fireEvent.click(screen.getByRole('button', { name: 'Play audio' }));
-    expect(ready.calls).toContain('play');
-    expect(screen.getByRole('button', { name: 'Pause audio' })).toBeInTheDocument();
+    act(() => ready.emitPlay());
 
     ready.currentTime = 2.5;
     frames.flushFrame();
     expect(position()).toHaveTextContent('0:02.500 / 1:05.000');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pause audio' }));
-    expect(screen.getByRole('button', { name: 'Play audio' })).toBeInTheDocument();
+    act(() => ready.emitPause());
     expect(frames.cancelAnimationFrame).toHaveBeenCalled();
+  });
+
+  it('has no own play, pause or speed controls', () => {
+    const { player } = setup();
+    loadReady(player);
+    for (const name of ['Play audio', 'Pause audio']) {
+      expect(screen.queryByRole('button', { name })).toBeNull();
+    }
+    expect(screen.queryByRole('combobox', { name: 'Audio speed' })).toBeNull();
   });
 
   it('shows a click on the waveform', () => {
@@ -105,15 +112,6 @@ describe('AudioTrack', () => {
     const ready = loadReady(player);
     act(() => ready.emitSeek(30));
     expect(position()).toHaveTextContent('0:30.000 / 1:05.000');
-  });
-
-  it('changes the speed', () => {
-    const { player } = setup();
-    const ready = loadReady(player);
-    fireEvent.change(screen.getByRole('combobox', { name: 'Audio speed' }), {
-      target: { value: '0.5' },
-    });
-    expect(ready.calls).toContain('setPlaybackRate:0.5');
   });
 
   it('explains an unsupported file', () => {

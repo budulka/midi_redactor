@@ -6,6 +6,7 @@ import type { Note, PedalEvent, Project } from '../../state/types.ts';
 import * as idModule from '../../utils/id.ts';
 import PedalLane from './PedalLane.tsx';
 import { readEditor, readPedals, renderWithProviders } from './testUtils.tsx';
+import { MediaDurationContext } from '../../state/timelineContext.ts';
 
 const SUSTAIN_Y = 10;
 const SOSTENUTO_Y = 30;
@@ -224,5 +225,15 @@ describe('PedalLane', () => {
     expect(removeSpy).toHaveBeenCalledWith('mousemove', expect.any(Function));
     expect(removeSpy).toHaveBeenCalledWith('mouseup', expect.any(Function));
     expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
+  });
+  it('extends the lane to the end of the loaded media', () => {
+    renderWithProviders(
+      <MediaDurationContext.Provider value={90}>
+        <PedalLane />
+      </MediaDurationContext.Provider>,
+    );
+    expect(screen.getByRole('application', { name: 'Pedal lane' })).toHaveStyle({
+      width: '9400px',
+    });
   });
 });

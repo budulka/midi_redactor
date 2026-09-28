@@ -3,13 +3,15 @@ import { useAudioTrackApi, useAudioTrackState } from '../state/audioTrackContext
 import { AUDIO_FILE_ACCEPT } from '../utils/audioFormats.ts';
 import { formatMediaPosition } from '../utils/transportFormat.ts';
 import FileLoadButton from './FileLoadButton.tsx';
-import PlaybackRateSelect from './PlaybackRateSelect.tsx';
 import { useFileDrop } from './useFileDrop.ts';
 import { useLivePosition } from './useLivePosition.ts';
 
-/** Audio file loading, waveform, play/pause, position and speed of the audio track. */
+/**
+ * Audio file loading, waveform and position of the audio track. Playback and speed follow the
+ * transport; a click on the waveform seeks the whole timeline.
+ */
 export default function AudioTrack() {
-  const { status, fileName, duration, playing, position, rate, error } = useAudioTrackState();
+  const { status, fileName, duration, playing, position, error } = useAudioTrackState();
   const api = useAudioTrackApi();
   const waveformRef = useRef<HTMLDivElement>(null);
   const positionRef = useRef<HTMLOutputElement>(null);
@@ -30,8 +32,6 @@ export default function AudioTrack() {
   };
 
   useLivePosition(playing, position, api.getCurrentTime, showPosition);
-
-  const ready = status === 'ready';
 
   return (
     <div className="audio-track" onDragOver={onDragOver} onDrop={onDrop}>
@@ -64,17 +64,7 @@ export default function AudioTrack() {
         )}
       </div>
       <div className="audio-track__controls" role="group" aria-label="Audio playback">
-        <button
-          type="button"
-          className="audio-track__play"
-          aria-label={playing ? 'Pause audio' : 'Play audio'}
-          disabled={!ready}
-          onClick={api.togglePlay}
-        >
-          {playing ? 'Pause' : 'Play'}
-        </button>
         <output ref={positionRef} className="audio-track__position" aria-label="Audio position" />
-        <PlaybackRateSelect label="Audio speed" value={rate} onChange={api.setRate} />
       </div>
       {error !== null && (
         <p role="alert" className="audio-track__error">
