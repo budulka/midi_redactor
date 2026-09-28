@@ -1,6 +1,6 @@
 # 001 — Каркас проекту
 
-**Статус:** схвалено
+**Статус:** виконано
 **Гілка:** feature/001-project-setup
 
 ## Мета
@@ -47,11 +47,11 @@ backend і frontend запускаються, тести й лінтери пр�
 - **Ручна перевірка:** `uv run uvicorn app.main:app --reload` + `npm run dev` → сторінка відкривається, статус backend "online".
 
 ## Критерії готовності (Definition of Done)
-- [ ] `cd backend && uv run pytest && uv run ruff check . && uv run mypy app` — зелено.
-- [ ] `cd frontend && npm test -- --run && npm run lint && npm run typecheck && npm run build` — зелено.
-- [ ] README описує запуск.
-- [ ] Гілку злито в `main` (`--no-ff`) і запушено на GitHub.
-- [ ] Статус задачі 001 в CLAUDE.md оновлено.
+- [x] `cd backend && uv run pytest && uv run ruff check . && uv run mypy app` — зелено.
+- [x] `cd frontend && npm test -- --run && npm run lint && npm run typecheck && npm run build` — зелено.
+- [x] README описує запуск.
+- [x] Гілку злито в `main` (`--no-ff`) і запушено на GitHub.
+- [x] Статус задачі 001 в CLAUDE.md оновлено.
 
 ## Ризики / відкриті питання
 - Потрібні встановлені `uv`, `node` (≥ 20) і `npm` — перевірю на початку реалізації; якщо чогось бракує, повідомлю.
