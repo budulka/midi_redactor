@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from app.models.project import Note, PedalEvent, Project, TimeSignature
+from app.models.project import MIN_PEDAL_DURATION, Note, PedalEvent, Project, TimeSignature
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sample_project.json"
 
@@ -109,8 +109,10 @@ def test_pedal_end_not_after_start_invalid(end: float) -> None:
         PedalEvent.model_validate(pedal_data(start=0.5, end=end))
 
 
-def test_pedal_min_duration_accepted() -> None:
-    pedal = PedalEvent.model_validate(pedal_data(start=0.5, end=0.5 + 0.001))
+@pytest.mark.parametrize("start", [0.5, 2.0])
+def test_pedal_min_duration_accepted(start: float) -> None:
+    # 2.0 + 0.001 - 2.0 < 0.001 in floating point, so the rule is end >= start + min.
+    pedal = PedalEvent.model_validate(pedal_data(start=start, end=start + MIN_PEDAL_DURATION))
 
     assert pedal.end > pedal.start
 

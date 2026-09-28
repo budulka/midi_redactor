@@ -41,7 +41,7 @@ class PedalEvent(CamelModel):
 
     @model_validator(mode="after")
     def check_interval(self) -> Self:
-        if self.end - self.start < MIN_PEDAL_DURATION:
+        if self.end < self.start + MIN_PEDAL_DURATION:
             raise ValueError(f"pedal end must be at least {MIN_PEDAL_DURATION} s after start")
         return self
 
