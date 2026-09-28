@@ -5,7 +5,7 @@ import {
   planMediaSync,
   type MediaSyncInput,
   type TrackSyncState,
-} from './mediaSync.ts';
+} from './mediaSyncRules.ts';
 
 const I: MediaSyncInput = Object.freeze({
   transportPlaying: true,
