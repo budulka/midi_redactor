@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { TransportStatus } from '../audio/Transport.ts';
+import type { SyncedMediaTrack } from '../media/MediaSync.ts';
 
 /** Velocity of notes played on the on-screen keyboard. */
 export const LIVE_VELOCITY = 96;
@@ -11,6 +12,8 @@ export interface TransportState {
   readonly status: TransportStatus;
   /** Cue position; while playing, the position at the moment playback started. */
   readonly position: number;
+  /** Playback speed of the notes and the media. */
+  readonly rate: number;
   readonly engineStatus: EngineStatus;
   readonly engineError: string | null;
 }
@@ -22,6 +25,10 @@ export interface TransportApi {
   seek(position: number): void;
   /** Live position while playing (read it in animation frames, it does not trigger renders). */
   getPosition(): number;
+  /** Playback speed of the notes and the media, 0.25–2. */
+  setRate(rate: number): void;
+  /** Makes a media track follow the transport; returns the function that detaches it. */
+  attachMedia(track: SyncedMediaTrack): () => void;
   noteOn(pitch: number): void;
   noteOff(pitch: number): void;
   /** Retries loading the piano after an error. */
