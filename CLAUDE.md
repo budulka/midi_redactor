@@ -216,12 +216,12 @@ midi_redactor/
 - Великі медіафайли (аудіо/відео) обробляються в браузері (Object URL), на backend без потреби не завантажуються.
 - Не залишати закоментований код, `console.log`/`print` для налагодження, TODO без пояснення.
 
-### Команди перевірки (актуалізувати після задачі 001)
+### Команди перевірки
 ```bash
 # backend
-cd backend && uv run pytest && uv run ruff check . && uv run mypy app
+cd backend && uv run pytest && uv run ruff check . && uv run ruff format --check . && uv run mypy app
 # frontend
-cd frontend && npm test -- --run && npm run lint && npm run typecheck
+cd frontend && npm test -- --run && npm run lint && npm run typecheck && npm run build && npx prettier --check .
 ```
 
 ---
@@ -230,7 +230,7 @@ cd frontend && npm test -- --run && npm run lint && npm run typecheck
 
 | № | Задача | Статус |
 |---|---|---|
-| 001 | Каркас проекту: backend (FastAPI + pytest), frontend (Vite + React + TS + Vitest), лінтери, README | план |
+| 001 | Каркас проекту: backend (FastAPI + pytest), frontend (Vite + React + TS + Vitest), лінтери, README | виконано |
 | 002 | Модель даних проекту + стан на frontend + чисті функції часу/квантизації | — |
 | 003 | Piano roll: відображення сітки й клавіатури, додавання/видалення/зміна нот | — |
 | 004 | Доріжка педалей (sustain, sostenuto, soft) | — |
