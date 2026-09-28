@@ -191,6 +191,15 @@ describe('NoteGrid', () => {
     expect(grid).toHaveFocus();
   });
 
+  it('marks focus from the mouse so the focus ring stays hidden', () => {
+    const grid = renderGrid();
+    fireEvent.mouseDown(grid, { clientX: 30, clientY: C4_Y });
+    fireEvent.mouseUp(window, { clientX: 30, clientY: C4_Y });
+    expect(grid).toHaveAttribute('data-pointer-focus', 'true');
+    grid.blur();
+    expect(grid).not.toHaveAttribute('data-pointer-focus');
+  });
+
   it('does not start a gesture with other mouse buttons', () => {
     const grid = renderGrid();
     fireEvent.mouseDown(grid, { clientX: 30, clientY: C4_Y, button: 2 });

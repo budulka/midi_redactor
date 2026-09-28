@@ -127,7 +127,7 @@
   cursor: crosshair;
 }
 
-.note-grid:focus-visible {
+.note-grid:focus-visible:not([data-pointer-focus]) {
   outline: 1px solid var(--note-selected);
   outline-offset: -1px;
 }

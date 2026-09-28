@@ -5,6 +5,7 @@ import { useEditor, useEditorDispatch } from '../../state/editorContext.ts';
 import { clearSelection, selectNotes, selectedNotes } from '../../state/editorState.ts';
 import { useProject, useProjectDispatch } from '../../state/projectContext.ts';
 import type { Note, NotePatch } from '../../state/types.ts';
+import { focusFromPointer } from '../../utils/focus.ts';
 import { withPreview, type DragOptions } from '../../utils/noteEditing.ts';
 import {
   ROW_HEIGHT_PX,
@@ -104,7 +105,7 @@ export default function NoteGrid() {
   );
 
   function handleMouseDown(event: MouseEvent<HTMLDivElement>) {
-    gridRef.current?.focus({ preventScroll: true });
+    focusFromPointer(gridRef.current);
     onMouseDown(event);
   }
 
