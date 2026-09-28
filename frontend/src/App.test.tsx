@@ -24,6 +24,11 @@ describe('App', () => {
     const transport = within(screen.getByRole('banner', { name: 'Transport' }));
     expect(transport.getByLabelText('Tempo (quarter notes per minute)')).toHaveValue(120);
     expect(transport.getByText(/♩ =/)).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('main', { name: 'MIDI editor' })).getByRole('region', {
+        name: 'Piano roll',
+      }),
+    ).toBeInTheDocument();
     expect(await screen.findByText('backend: online')).toBeInTheDocument();
   });
 });
