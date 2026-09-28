@@ -25,3 +25,16 @@ export function createEmptyProject(): Project {
     pedals: [],
   };
 }
+
+/** MIDI control change numbers of the piano pedals. */
+export const PEDAL_CC: Readonly<Record<PedalType, number>> = {
+  sustain: 64,
+  sostenuto: 66,
+  soft: 67,
+};
+
+export const PEDAL_LABELS: Readonly<Record<PedalType, string>> = {
+  sustain: 'Sustain',
+  sostenuto: 'Sostenuto',
+  soft: 'Soft',
+};
