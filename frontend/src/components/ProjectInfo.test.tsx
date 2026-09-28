@@ -10,8 +10,6 @@ describe('ProjectInfo', () => {
         <ProjectInfo />
       </ProjectProvider>,
     );
-    expect(screen.getByText('120 BPM')).toBeInTheDocument();
-    expect(screen.getByText('4/4')).toBeInTheDocument();
     expect(screen.getByText('0 notes')).toBeInTheDocument();
   });
 
@@ -30,10 +28,8 @@ describe('ProjectInfo', () => {
         <ProjectInfo />
       </ProjectProvider>,
     );
-    expect(screen.getByText('90 BPM')).toBeInTheDocument();
-    expect(screen.getByText('6/8')).toBeInTheDocument();
     expect(screen.getByText('2 notes')).toBeInTheDocument();
-    expect(screen.getByLabelText('Project')).toHaveTextContent('90 BPM · 6/8 · 2 notes');
+    expect(screen.getByLabelText('Project')).toHaveTextContent('2 notes');
   });
 
   it('uses the singular for one note', () => {

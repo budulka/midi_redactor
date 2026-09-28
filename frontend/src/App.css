@@ -6,6 +6,15 @@
   --muted: #8a90a0;
   --ok: #4caf7a;
   --err: #e0605e;
+  --grid-bar: rgba(255, 255, 255, 0.32);
+  --grid-beat: rgba(255, 255, 255, 0.14);
+  --grid-step: rgba(255, 255, 255, 0.06);
+  --grid-row: rgba(255, 255, 255, 0.04);
+  --grid-row-black: rgba(0, 0, 0, 0.18);
+  --note: #5b9cf0;
+  --note-selected: #f0b35b;
+  --key-white: #eceef2;
+  --key-black: #1f2127;
   color-scheme: dark;
   font-family: system-ui, sans-serif;
 }
@@ -52,8 +61,10 @@ body {
 .app__editor {
   grid-area: editor;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .app__media {
@@ -92,4 +103,26 @@ body {
   margin: 0 auto 0 24px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+.tempo-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tempo-controls__signature {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tempo-controls__input {
+  width: 64px;
+}
+
+.tempo-controls__input--short {
+  width: 48px;
 }
