@@ -36,17 +36,24 @@ function lastStartingAtOrBefore(sorted: readonly PedalEvent[], time: number): nu
   return found;
 }
 
+/**
+ * Like `pedalAt`, for pedals of one type already sorted by start (see `pedalsOfType`), so that
+ * repeated lookups do not sort again.
+ */
+export function pressedPedalIn(sorted: readonly PedalEvent[], time: number): PedalEvent | null {
+  const index = lastStartingAtOrBefore(sorted, time);
+  if (index < 0) return null;
+  const pedal = sorted[index];
+  return time < pedal.end ? pedal : null;
+}
+
 /** The pedal of a type that is pressed at a time (start inclusive, end exclusive), or null. */
 export function pedalAt(
   pedals: readonly PedalEvent[],
   type: PedalType,
   time: number,
 ): PedalEvent | null {
-  const sorted = pedalsOfType(pedals, type);
-  const index = lastStartingAtOrBefore(sorted, time);
-  if (index < 0) return null;
-  const pedal = sorted[index];
-  return time < pedal.end ? pedal : null;
+  return pressedPedalIn(pedalsOfType(pedals, type), time);
 }
 
 /**

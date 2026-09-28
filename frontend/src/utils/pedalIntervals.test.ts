@@ -1,5 +1,12 @@
 import type { PedalEvent } from '../state/types.ts';
-import { gapAt, neighborBounds, pedalAt, pedalsOfType, pedalsOverlap } from './pedalIntervals.ts';
+import {
+  gapAt,
+  neighborBounds,
+  pedalAt,
+  pedalsOfType,
+  pedalsOverlap,
+  pressedPedalIn,
+} from './pedalIntervals.ts';
 
 function pedal(id: string, type: PedalEvent['type'], start: number, end: number): PedalEvent {
   return { id, type, start, end };
@@ -33,6 +40,15 @@ describe('pedalAt', () => {
     expect(pedalAt(set, 'sustain', 2)).toBe(s2);
     expect(pedalAt(set, 'soft', 1)).toBeNull();
     expect(pedalAt([], 'sustain', 0)).toBeNull();
+  });
+});
+
+describe('pressedPedalIn', () => {
+  it('looks up a pedal in a sorted list', () => {
+    const sorted = pedalsOfType(set, 'sustain');
+    expect(pressedPedalIn(sorted, 0)).toBe(s1);
+    expect(pressedPedalIn(sorted, 1.5)).toBeNull();
+    expect(pressedPedalIn(sorted, 2.5)).toBe(s2);
   });
 });
 
