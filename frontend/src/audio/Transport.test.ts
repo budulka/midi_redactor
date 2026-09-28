@@ -341,6 +341,21 @@ describe('Transport', () => {
     expect(transport.getSnapshot()).toEqual({ status: 'paused', position: 60, rate: 1 });
   });
 
+  it('reports the remaining start delay in timeline seconds', () => {
+    const { engine, transport } = setup();
+    expect(transport.getStartDelay()).toBe(0);
+    transport.play();
+    expect(transport.getStartDelay()).toBeCloseTo(0.05);
+    engine.time = 0.02;
+    expect(transport.getStartDelay()).toBeCloseTo(0.03);
+    engine.time = 0.1;
+    expect(transport.getStartDelay()).toBe(0);
+    transport.setRate(2);
+    expect(transport.getStartDelay()).toBeCloseTo(0.1);
+    transport.pause();
+    expect(transport.getStartDelay()).toBe(0);
+  });
+
   it('stops and drops the engine on dispose', () => {
     const { engine, transport } = setup();
     transport.play();

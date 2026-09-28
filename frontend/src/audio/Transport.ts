@@ -158,6 +158,15 @@ export class Transport {
     this.updateEndTime();
   }
 
+  /**
+   * Timeline seconds the position still stays at the cue position after Play or a seek while
+   * playing (the start delay); 0 once it moves and when not playing.
+   */
+  getStartDelay(): number {
+    if (this.snapshot.status !== 'playing' || this.engine === null) return 0;
+    return Math.max(0, this.anchor.contextTime - this.engine.now()) * this.anchor.rate;
+  }
+
   /** Live position while playing, the cue position otherwise. */
   getPosition(): number {
     return this.snapshot.status === 'playing' ? this.currentPosition() : this.snapshot.position;
