@@ -3,17 +3,20 @@ import {
   DEFAULT_EDITOR_STATE,
   clearSelection,
   selectNotes,
+  selectPedals,
   selectedNotes,
+  selectedPedals,
   setGridDivision,
   setSnap,
   setZoom,
   type EditorState,
 } from './editorState.ts';
-import type { Note } from './types.ts';
+import type { Note, PedalEvent } from './types.ts';
 
 const initial: EditorState = Object.freeze({
   ...DEFAULT_EDITOR_STATE,
   selectedNoteIds: Object.freeze([]) as readonly string[],
+  selectedPedalIds: Object.freeze([]) as readonly string[],
 });
 
 describe('editorReducer', () => {
@@ -23,6 +26,7 @@ describe('editorReducer', () => {
       snapEnabled: true,
       pixelsPerSecond: 100,
       selectedNoteIds: [],
+      selectedPedalIds: [],
     });
   });
 
@@ -56,6 +60,32 @@ describe('editorReducer', () => {
     expect(editorReducer(selected, clearSelection()).selectedNoteIds).toEqual([]);
     expect(editorReducer(initial, clearSelection())).toBe(initial);
   });
+
+  it('selects pedals and clears the note selection', () => {
+    const selected = editorReducer(initial, selectPedals(['p1']));
+    expect(selected.selectedPedalIds).toEqual(['p1']);
+    expect(editorReducer(selected, selectPedals(['p1']))).toBe(selected);
+    const withNotes = editorReducer(initial, selectNotes(['a']));
+    const switched = editorReducer(withNotes, selectPedals(['p1']));
+    expect(switched.selectedNoteIds).toEqual([]);
+    expect(switched.selectedPedalIds).toEqual(['p1']);
+  });
+
+  it('clears the pedal selection when notes are selected', () => {
+    const withPedals = editorReducer(initial, selectPedals(['p1']));
+    const next = editorReducer(withPedals, selectNotes(['a']));
+    expect(next.selectedNoteIds).toEqual(['a']);
+    expect(next.selectedPedalIds).toEqual([]);
+    expect(editorReducer(next, selectNotes(['a']))).toBe(next);
+  });
+
+  it('clears both selections', () => {
+    const withPedals = editorReducer(initial, selectPedals(['p1']));
+    const cleared = editorReducer(withPedals, clearSelection());
+    expect(cleared.selectedPedalIds).toEqual([]);
+    expect(cleared.selectedNoteIds).toEqual([]);
+    expect(editorReducer(cleared, clearSelection())).toBe(cleared);
+  });
 });
 
 describe('selectedNotes', () => {
@@ -69,5 +99,17 @@ describe('selectedNotes', () => {
     expect(selectedNotes(notes, ['b', 'zzz'])).toEqual([notes[1]]);
     expect(selectedNotes(notes, ['c', 'a'])).toEqual([notes[0], notes[2]]);
     expect(selectedNotes(notes, [])).toEqual([]);
+  });
+});
+
+describe('selectedPedals', () => {
+  const pedals: PedalEvent[] = [
+    { id: 'p1', type: 'sustain', start: 0, end: 1 },
+    { id: 'p2', type: 'soft', start: 0, end: 1 },
+  ];
+
+  it('returns selected pedals in project order and ignores unknown ids', () => {
+    expect(selectedPedals(pedals, ['p2', 'zzz'])).toEqual([pedals[1]]);
+    expect(selectedPedals(pedals, [])).toEqual([]);
   });
 });

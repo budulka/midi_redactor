@@ -1,6 +1,6 @@
 import { DEFAULT_PIXELS_PER_SECOND } from '../utils/pianoRollGeometry.ts';
 import type { GridDivision } from '../utils/quantize.ts';
-import type { Note } from './types.ts';
+import type { Note, PedalEvent } from './types.ts';
 
 /** UI state of the editor; not part of the project document. */
 export interface EditorState {
@@ -8,6 +8,8 @@ export interface EditorState {
   readonly snapEnabled: boolean;
   readonly pixelsPerSecond: number;
   readonly selectedNoteIds: readonly string[];
+  /** Selected pedals; note and pedal selections exclude each other. */
+  readonly selectedPedalIds: readonly string[];
 }
 
 export const DEFAULT_EDITOR_STATE: EditorState = {
@@ -15,6 +17,7 @@ export const DEFAULT_EDITOR_STATE: EditorState = {
   snapEnabled: true,
   pixelsPerSecond: DEFAULT_PIXELS_PER_SECOND,
   selectedNoteIds: [],
+  selectedPedalIds: [],
 };
 
 export type EditorAction =
@@ -22,6 +25,7 @@ export type EditorAction =
   | { readonly type: 'editor/setSnap'; readonly snapEnabled: boolean }
   | { readonly type: 'editor/setZoom'; readonly pixelsPerSecond: number }
   | { readonly type: 'editor/selectNotes'; readonly ids: readonly string[] }
+  | { readonly type: 'editor/selectPedals'; readonly ids: readonly string[] }
   | { readonly type: 'editor/clearSelection' };
 
 export function setGridDivision(gridDivision: GridDivision): EditorAction {
@@ -36,11 +40,17 @@ export function setZoom(pixelsPerSecond: number): EditorAction {
   return { type: 'editor/setZoom', pixelsPerSecond };
 }
 
-/** Replaces the selection. */
+/** Replaces the note selection and clears the pedal selection. */
 export function selectNotes(ids: readonly string[]): EditorAction {
   return { type: 'editor/selectNotes', ids };
 }
 
+/** Replaces the pedal selection and clears the note selection. */
+export function selectPedals(ids: readonly string[]): EditorAction {
+  return { type: 'editor/selectPedals', ids };
+}
+
+/** Clears both the note and the pedal selection. */
 export function clearSelection(): EditorAction {
   return { type: 'editor/clearSelection' };
 }
@@ -53,4 +63,14 @@ export function selectedNotes(
   if (selectedIds.length === 0) return [];
   const ids = new Set(selectedIds);
   return notes.filter((note) => ids.has(note.id));
+}
+
+/** Selected pedals in project order; unknown ids are ignored. */
+export function selectedPedals(
+  pedals: readonly PedalEvent[],
+  selectedIds: readonly string[],
+): readonly PedalEvent[] {
+  if (selectedIds.length === 0) return [];
+  const ids = new Set(selectedIds);
+  return pedals.filter((pedal) => ids.has(pedal.id));
 }
