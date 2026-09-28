@@ -87,3 +87,9 @@ body {
 .backend-status--offline {
   color: var(--err);
 }
+
+.project-info {
+  margin: 0 auto 0 24px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}

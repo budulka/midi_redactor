@@ -1,0 +1,27 @@
+import type { PedalType, Project, TimeSignature } from './types.ts';
+
+export const MIN_PITCH = 21;
+export const MAX_PITCH = 108;
+export const MIN_VELOCITY = 1;
+export const MAX_VELOCITY = 127;
+export const MIN_NOTE_DURATION = 0.001;
+export const MIN_PEDAL_DURATION = 0.001;
+export const MIN_BPM = 20;
+export const MAX_BPM = 300;
+export const MIN_NUMERATOR = 1;
+export const MAX_NUMERATOR = 32;
+
+export const PEDAL_TYPES: readonly PedalType[] = ['sustain', 'sostenuto', 'soft'];
+export const ALLOWED_DENOMINATORS: readonly number[] = [1, 2, 4, 8, 16, 32];
+
+export const DEFAULT_BPM = 120;
+export const DEFAULT_TIME_SIGNATURE: TimeSignature = { numerator: 4, denominator: 4 };
+
+export function createEmptyProject(): Project {
+  return {
+    bpm: DEFAULT_BPM,
+    timeSignature: DEFAULT_TIME_SIGNATURE,
+    notes: [],
+    pedals: [],
+  };
+}
