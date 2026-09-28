@@ -21,9 +21,9 @@ describe('App', () => {
     expect(screen.getByRole('complementary', { name: 'Media' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Video' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Audio track' })).toBeInTheDocument();
-    expect(
-      within(screen.getByRole('banner', { name: 'Transport' })).getByText('120 BPM'),
-    ).toBeInTheDocument();
+    const transport = within(screen.getByRole('banner', { name: 'Transport' }));
+    expect(transport.getByLabelText('Tempo (quarter notes per minute)')).toHaveValue(120);
+    expect(transport.getByText(/♩ =/)).toBeInTheDocument();
     expect(await screen.findByText('backend: online')).toBeInTheDocument();
   });
 });

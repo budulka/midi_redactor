@@ -1,5 +1,6 @@
 import BackendStatus from './components/BackendStatus.tsx';
 import ProjectInfo from './components/ProjectInfo.tsx';
+import TempoControls from './components/TempoControls.tsx';
 import ProjectProvider from './state/ProjectProvider.tsx';
 
 export default function App() {
@@ -8,6 +9,7 @@ export default function App() {
       <div className="app">
         <header className="app__transport" aria-label="Transport">
           <h1 className="app__title">MIDI Redactor</h1>
+          <TempoControls />
           <ProjectInfo />
           <BackendStatus />
         </header>

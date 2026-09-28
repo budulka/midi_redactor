@@ -93,3 +93,25 @@ body {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+
+.tempo-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tempo-controls__signature {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tempo-controls__input {
+  width: 64px;
+}
+
+.tempo-controls__input--short {
+  width: 48px;
+}
