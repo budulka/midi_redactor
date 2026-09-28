@@ -87,7 +87,13 @@ describe('NoteGrid', () => {
   it('places the note under the cursor when snapping is off', () => {
     const grid = renderGrid([], { snapEnabled: false });
     drag(grid, [30, C4_Y]);
-    expect(storedNotes()[0].start).toBe(0.3);
+    expect(storedNotes()[0]).toMatchObject({ start: 0.3, duration: 0.125 });
+  });
+
+  it('keeps the default length for a click with a tiny move', () => {
+    const grid = renderGrid();
+    drag(grid, [30, C4_Y], [31, C4_Y]);
+    expect(storedNotes()[0]).toMatchObject({ start: 0.25, duration: 0.125 });
   });
 
   it('moves a note in time and pitch', () => {

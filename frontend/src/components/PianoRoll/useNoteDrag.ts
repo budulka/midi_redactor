@@ -43,8 +43,8 @@ export interface UseNoteDragResult {
 interface Gesture {
   readonly drag: DragState;
   readonly startPoint: Point;
-  /** False until the mouse moves past the drag threshold (always true for create). */
-  active: boolean;
+  /** False until the mouse moves past the drag threshold; a click without it keeps the note as is. */
+  moved: boolean;
   preview: Note | null;
 }
 
@@ -87,7 +87,7 @@ export function useNoteDrag(options: UseNoteDragOptions): UseNoteDragResult {
       gesture = {
         drag: { kind: 'create', original: note, originTime: time, originPitch: pitch },
         startPoint: point,
-        active: true,
+        moved: false,
         preview: note,
       };
     } else {
@@ -102,7 +102,7 @@ export function useNoteDrag(options: UseNoteDragOptions): UseNoteDragResult {
           originPitch: pitch,
         },
         startPoint: point,
-        active: false,
+        moved: false,
         preview: null,
       };
     }
@@ -113,12 +113,12 @@ export function useNoteDrag(options: UseNoteDragOptions): UseNoteDragResult {
       const current = latest.current;
       const local = current.getLocalPoint(moveEvent);
       if (
-        !gesture.active &&
+        !gesture.moved &&
         !exceedsDragThreshold(local.x - gesture.startPoint.x, local.y - gesture.startPoint.y)
       ) {
         return;
       }
-      gesture.active = true;
+      gesture.moved = true;
       gesture.preview = applyDrag(
         gesture.drag,
         xToTime(local.x, current.geometry),
@@ -146,10 +146,10 @@ export function useNoteDrag(options: UseNoteDragOptions): UseNoteDragResult {
       const result = gesture.preview;
       const { onCommitCreate, onCommitUpdate } = latest.current;
       finish();
-      if (result === null || !gesture.active) return;
+      if (result === null) return;
       if (gesture.drag.kind === 'create') {
         onCommitCreate(result);
-      } else {
+      } else if (gesture.moved) {
         onCommitUpdate(result.id, {
           start: result.start,
           duration: result.duration,
