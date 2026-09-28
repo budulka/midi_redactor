@@ -197,7 +197,7 @@ body {
   min-width: 0;
 }
 
-.audio-track__load {
+.file-load {
   padding: 2px 8px;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -206,7 +206,7 @@ body {
   white-space: nowrap;
 }
 
-.audio-track__load:focus-within {
+.file-load:focus-within {
   outline: 2px solid var(--note);
 }
 

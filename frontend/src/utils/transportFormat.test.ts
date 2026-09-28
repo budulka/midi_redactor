@@ -1,4 +1,5 @@
 import { formatBarBeat, formatClock } from './transportFormat.ts';
+import { formatMediaPosition } from './transportFormat.ts';
 
 const fourFour = { numerator: 4, denominator: 4 };
 
@@ -20,5 +21,12 @@ describe('formatBarBeat', () => {
     expect(formatBarBeat(0, 120, fourFour)).toBe('1.1');
     expect(formatBarBeat(2.5, 120, fourFour)).toBe('2.2');
     expect(formatBarBeat(1.6, 120, { numerator: 3, denominator: 4 })).toBe('2.1');
+  });
+});
+
+describe('formatMediaPosition', () => {
+  it('shows the current time and the duration', () => {
+    expect(formatMediaPosition(2.5, 65)).toBe('0:02.500 / 1:05.000');
+    expect(formatMediaPosition(0, 0)).toBe('0:00.000 / 0:00.000');
   });
 });

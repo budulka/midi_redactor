@@ -1,16 +1,9 @@
 import { createContext, useContext } from 'react';
 import type { AudioTrackSnapshot } from '../audio/AudioTrackController.ts';
+import type { MediaTrackApi } from './useMediaTrackController.ts';
 
 /** Stable audio track commands; the same object for the whole lifetime of the provider. */
-export interface AudioTrackApi {
-  loadFile(file: File, container: HTMLElement): void;
-  clear(): void;
-  togglePlay(): void;
-  seek(seconds: number): void;
-  setRate(rate: number): void;
-  /** Live position while playing (read it in animation frames, it does not trigger renders). */
-  getCurrentTime(): number;
-}
+export type AudioTrackApi = MediaTrackApi;
 
 export const AudioTrackStateContext = createContext<AudioTrackSnapshot | null>(null);
 export const AudioTrackApiContext = createContext<AudioTrackApi | null>(null);
