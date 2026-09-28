@@ -41,6 +41,7 @@ export const createWaveSurferPlayer: CreateWaveformPlayer = ({ container, url, e
     setTime: (seconds) => ws.setTime(seconds),
     getCurrentTime: () => ws.getCurrentTime(),
     setPlaybackRate: (rate) => ws.setPlaybackRate(rate, true),
+    setMuted: (muted) => ws.setMuted(muted),
     destroy: () => ws.destroy(),
   };
   return player;
