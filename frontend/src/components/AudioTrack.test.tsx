@@ -151,4 +151,14 @@ describe('AudioTrack', () => {
     expect(screen.getByText(/MP3, WAV, OGG, AAC, M4A/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Remove audio' })).toBeDisabled();
   });
+
+  it('shows the full file name in a tooltip', () => {
+    const { player } = setup();
+    const longName = 'a'.repeat(120) + '.mp3';
+    choose(longName, 'audio/mpeg');
+    act(() => player().emitReady(65));
+    const name = document.querySelector('.audio-track__name');
+    expect(name).toHaveTextContent(longName);
+    expect(name).toHaveAttribute('title', longName);
+  });
 });
