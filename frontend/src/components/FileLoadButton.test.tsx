@@ -31,4 +31,24 @@ describe('FileLoadButton', () => {
     fireEvent.change(input, { target: { files: [] } });
     expect(onFile).not.toHaveBeenCalled();
   });
+
+  it('can be disabled', () => {
+    const { container, rerender } = render(
+      <FileLoadButton
+        text="Import"
+        inputLabel="MIDI file"
+        accept=".mid"
+        disabled
+        onFile={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText('MIDI file')).toBeDisabled();
+    expect(container.querySelector('label')).toHaveClass('file-load--disabled');
+
+    rerender(
+      <FileLoadButton text="Import" inputLabel="MIDI file" accept=".mid" onFile={vi.fn()} />,
+    );
+    expect(screen.getByLabelText('MIDI file')).not.toBeDisabled();
+    expect(container.querySelector('label')).not.toHaveClass('file-load--disabled');
+  });
 });

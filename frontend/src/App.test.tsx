@@ -122,4 +122,16 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
     expect(await screen.findByText('backend: online')).toBeInTheDocument();
   });
+
+  it('shows the MIDI import button without sending a request', async () => {
+    render(<App />);
+    const transport = within(screen.getByRole('banner', { name: 'Transport' }));
+    expect(transport.getByText('Import .mid')).toBeInTheDocument();
+    const input = transport.getByLabelText('Import MIDI file');
+    expect(input).toHaveAttribute('type', 'file');
+    expect(input.getAttribute('accept')).toContain('.mid');
+    expect(await screen.findByText('backend: online')).toBeInTheDocument();
+    const urls = vi.mocked(fetch).mock.calls.map(([url]) => url);
+    expect(urls.every((url) => url === '/api/health')).toBe(true);
+  });
 });

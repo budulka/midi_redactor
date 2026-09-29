@@ -1,6 +1,7 @@
 import AudioTrack from './components/AudioTrack.tsx';
 import BackendStatus from './components/BackendStatus.tsx';
 import ExportButton from './components/ExportButton.tsx';
+import ImportButton from './components/ImportButton.tsx';
 import KeyboardShortcuts from './components/KeyboardShortcuts.tsx';
 import ProjectInfo from './components/ProjectInfo.tsx';
 import PianoRoll from './components/PianoRoll/PianoRoll.tsx';
@@ -31,6 +32,7 @@ export default function App() {
                   <TempoControls />
                   <TransportControls />
                   <ProjectInfo />
+                  <ImportButton />
                   <ExportButton />
                   <BackendStatus />
                 </header>
