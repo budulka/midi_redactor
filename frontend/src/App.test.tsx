@@ -94,4 +94,14 @@ describe('App', () => {
     expect(loadPianoEngine).not.toHaveBeenCalled();
     expect(await screen.findByText('backend: online')).toBeInTheDocument();
   });
+
+  it('shows the export button', async () => {
+    render(<App />);
+    const transport = within(screen.getByRole('banner', { name: 'Transport' }));
+    expect(transport.getByRole('button', { name: 'Export .mid' })).toBeInTheDocument();
+    expect(await screen.findByText('backend: online')).toBeInTheDocument();
+    const urls = vi.mocked(fetch).mock.calls.map(([url]) => url);
+    expect(urls.length).toBeGreaterThan(0);
+    expect(urls.every((url) => url === '/api/health')).toBe(true);
+  });
 });
