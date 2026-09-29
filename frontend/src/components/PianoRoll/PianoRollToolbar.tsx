@@ -15,6 +15,7 @@ import {
   quantizeNote,
   type GridDivision,
 } from '../../utils/quantize.ts';
+import { SHORTCUT_HINTS } from '../../utils/shortcuts.ts';
 import NoteInspector from './NoteInspector.tsx';
 
 function divisionLabel(division: GridDivision): string {
@@ -51,7 +52,7 @@ export default function PianoRollToolbar() {
       <button
         type="button"
         aria-label="Undo"
-        title="Undo (Ctrl+Z)"
+        title={`Undo (${SHORTCUT_HINTS.undo})`}
         disabled={!canUndo}
         onClick={history.undo}
       >
@@ -60,7 +61,7 @@ export default function PianoRollToolbar() {
       <button
         type="button"
         aria-label="Redo"
-        title="Redo (Ctrl+Shift+Z)"
+        title={`Redo (${SHORTCUT_HINTS.redo})`}
         disabled={!canRedo}
         onClick={history.redo}
       >
