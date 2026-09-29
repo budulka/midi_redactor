@@ -1,13 +1,24 @@
 import random
+import struct
+from pathlib import Path
+from typing import Literal
 
-from app.models.project import Note, PedalEvent, PedalType
+import pytest
+
+from app.models.project import Note, PedalEvent, PedalType, Project, TimeSignature
 from app.services.midi_export import (
     EventOrder,
     MidiEvent,
+    build_midi_file,
+    export_midi,
     note_events,
     pedal_events,
     sort_events,
 )
+from app.services.timing import TICKS_PER_QUARTER, bpm_to_midi_tempo, ticks_to_seconds
+from tests.midi_readback import read_midi
+
+FIXTURE = Path(__file__).parent / "fixtures" / "sample_project.json"
 
 
 def note(note_id: str, pitch: int, start: float, duration: float, velocity: int = 100) -> Note:
@@ -171,3 +182,155 @@ def test_sort_events_is_deterministic() -> None:
     random.Random(0).shuffle(shuffled)
 
     assert sort_events(shuffled) == sort_events(events)
+
+
+def sample_project() -> Project:
+    return Project.model_validate_json(FIXTURE.read_text())
+
+
+def test_fixture_reads_back() -> None:
+    read = read_midi(export_midi(sample_project()))
+
+    assert read.type == 1
+    assert read.ticks_per_beat == 480
+    assert read.track_names == ["MIDI Redactor", "Piano"]
+    assert read.tempos == [(0, 500000)]
+    assert read.time_signatures == [(0, 3, 4)]
+    assert read.programs == [(0, 0, 0)]
+    assert read.notes == [(21, 0, 240, 64), (60, 480, 1560, 100), (108, 1680, 2040, 127)]
+    assert read.controls == [
+        (0, 64, 127),
+        (480, 66, 127),
+        (1080, 67, 127),
+        (1440, 64, 0),
+        (1920, 67, 0),
+        (2160, 66, 0),
+    ]
+    assert read.track_ends == [0, 2160]
+
+
+def _random_project(bpm: float) -> Project:
+    rng = random.Random(1)
+    notes: list[Note] = []
+    while len(notes) < 20:
+        candidate = Note(
+            id=f"n{len(notes)}",
+            pitch=rng.randint(21, 108),
+            start=rng.uniform(0, 30),
+            duration=rng.uniform(0.05, 2),
+            velocity=rng.randint(1, 127),
+        )
+        end = candidate.start + candidate.duration
+        overlaps = any(
+            other.pitch == candidate.pitch
+            and candidate.start < other.start + other.duration
+            and other.start < end
+            for other in notes
+        )
+        if not overlaps:
+            notes.append(candidate)
+    pedal_types: list[PedalType] = ["sustain", "sostenuto", "soft"]
+    pedals = []
+    for index, pedal_type in enumerate(pedal_types):
+        start = rng.uniform(0, 20)
+        pedals.append(pedal(f"p{index}", pedal_type, start, start + rng.uniform(0.05, 10)))
+    return Project(
+        bpm=bpm,
+        time_signature=TimeSignature(numerator=6, denominator=8),
+        notes=notes,
+        pedals=pedals,
+    )
+
+
+def test_round_trip_in_seconds() -> None:
+    bpm = 97.5
+    project = _random_project(bpm)
+    half_tick = 60 / bpm / TICKS_PER_QUARTER / 2
+    tolerance = half_tick + 1e-9
+
+    read = read_midi(export_midi(project))
+
+    assert read.tempos == [(0, bpm_to_midi_tempo(bpm))]
+    assert read.time_signatures == [(0, 6, 8)]
+    assert len(read.notes) == len(project.notes)
+    expected_notes = sorted(project.notes, key=lambda item: (item.pitch, item.start))
+    read_notes = sorted(read.notes)
+    for expected, (pitch, on, off, velocity) in zip(expected_notes, read_notes, strict=True):
+        assert pitch == expected.pitch
+        assert velocity == expected.velocity
+        assert abs(ticks_to_seconds(on, bpm) - expected.start) <= tolerance
+        assert abs(ticks_to_seconds(off, bpm) - (expected.start + expected.duration)) <= tolerance
+
+    for expected_pedal in project.pedals:
+        controller = {"sustain": 64, "sostenuto": 66, "soft": 67}[expected_pedal.type]
+        presses = [
+            tick for tick, number, value in read.controls if (number, value) == (controller, 127)
+        ]
+        releases = [
+            tick for tick, number, value in read.controls if (number, value) == (controller, 0)
+        ]
+        assert len(presses) == len(releases) == 1
+        assert abs(ticks_to_seconds(presses[0], bpm) - expected_pedal.start) <= tolerance
+        assert abs(ticks_to_seconds(releases[0], bpm) - expected_pedal.end) <= tolerance
+
+
+@pytest.mark.parametrize(("bpm", "tempo"), [(60, 1000000), (90, 666667)])
+def test_tempo_is_written(bpm: float, tempo: int) -> None:
+    assert read_midi(export_midi(Project(bpm=bpm))).tempos == [(0, tempo)]
+
+
+@pytest.mark.parametrize(("numerator", "denominator"), [(5, 16), (4, 1)])
+def test_extreme_time_signatures_read_back(
+    numerator: int, denominator: Literal[1, 2, 4, 8, 16, 32]
+) -> None:
+    project = Project(time_signature=TimeSignature(numerator=numerator, denominator=denominator))
+
+    assert read_midi(export_midi(project)).time_signatures == [(0, numerator, denominator)]
+
+
+def test_empty_project() -> None:
+    read = read_midi(export_midi(Project()))
+
+    assert read.notes == []
+    assert read.controls == []
+    assert read.track_names == ["MIDI Redactor", "Piano"]
+    assert read.programs == [(0, 0, 0)]
+    assert read.track_ends == [0, 0]
+
+
+def test_extreme_pitches_and_velocities() -> None:
+    project = Project(notes=[note("low", 21, 0, 0.5, 1), note("high", 108, 0, 0.5, 127)])
+
+    assert read_midi(export_midi(project)).notes == [(21, 0, 480, 1), (108, 0, 480, 127)]
+
+
+def test_each_track_ends_with_one_end_of_track() -> None:
+    midi_file = build_midi_file(sample_project())
+
+    assert len(midi_file.tracks) == 2
+    for track in midi_file.tracks:
+        kinds = [message.type for message in track]
+        assert kinds.count("end_of_track") == 1
+        assert kinds[-1] == "end_of_track"
+
+
+def test_smf_structure_without_mido() -> None:
+    data = export_midi(sample_project())
+
+    assert data[:4] == b"MThd"
+    header_length, file_format, track_count, division = struct.unpack(">IHHH", data[4:14])
+    assert (header_length, file_format, track_count, division) == (6, 1, 2, 480)
+    offset = 8 + header_length
+    chunks = []
+    while offset < len(data):
+        chunk_type = data[offset : offset + 4]
+        (length,) = struct.unpack(">I", data[offset + 4 : offset + 8])
+        chunks.append((chunk_type, data[offset + 8 : offset + 8 + length]))
+        offset += 8 + length
+    assert offset == len(data)
+    assert [chunk_type for chunk_type, _ in chunks] == [b"MTrk", b"MTrk"]
+    assert all(body.endswith(b"\xff\x2f\x00") for _, body in chunks)
+
+
+def test_export_is_deterministic() -> None:
+    assert export_midi(sample_project()) == export_midi(sample_project())

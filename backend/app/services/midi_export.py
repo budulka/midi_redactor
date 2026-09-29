@@ -1,12 +1,19 @@
-"""Pure conversion of a project into MIDI events."""
+"""Pure conversion of a project into MIDI events and a Standard MIDI File.
 
+All `mido` usage is confined to this module: `mido` ships without type hints,
+so its objects are `Any` here and only typed values (`bytes`, `MidiEvent`) leave it.
+"""
+
+import io
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Final, Literal
+from typing import Any, Final, Literal
 
-from app.models.project import Note, PedalEvent, PedalType
-from app.services.timing import TICKS_PER_QUARTER, seconds_to_ticks
+import mido
+
+from app.models.project import Note, PedalEvent, PedalType, Project
+from app.services.timing import TICKS_PER_QUARTER, bpm_to_midi_tempo, seconds_to_ticks
 
 PEDAL_CONTROLLERS: Final[dict[PedalType, int]] = {"sustain": 64, "sostenuto": 66, "soft": 67}
 PEDAL_DOWN: Final = 127
@@ -124,3 +131,68 @@ def pedal_events(
 def sort_events(events: Iterable[MidiEvent]) -> list[MidiEvent]:
     """Deterministic file order: by tick, then by same-tick order, then by number."""
     return sorted(events, key=lambda event: (event.tick, event.order, event.number))
+
+
+def _to_message(event: MidiEvent, delta: int) -> Any:
+    if event.kind == "control_change":
+        return mido.Message(
+            "control_change",
+            channel=PIANO_CHANNEL,
+            control=event.number,
+            value=event.value,
+            time=delta,
+        )
+    return mido.Message(
+        event.kind,
+        channel=PIANO_CHANNEL,
+        note=event.number,
+        velocity=event.value,
+        time=delta,
+    )
+
+
+def build_midi_file(project: Project, ppq: int = TICKS_PER_QUARTER) -> Any:
+    """Build a format 1 `mido.MidiFile`: a conductor track and a piano track."""
+    midi_file = mido.MidiFile(type=1, ticks_per_beat=ppq)
+
+    conductor = mido.MidiTrack()
+    conductor.append(mido.MetaMessage("track_name", name=CONDUCTOR_TRACK_NAME, time=0))
+    conductor.append(mido.MetaMessage("set_tempo", tempo=bpm_to_midi_tempo(project.bpm), time=0))
+    conductor.append(
+        mido.MetaMessage(
+            "time_signature",
+            numerator=project.time_signature.numerator,
+            denominator=project.time_signature.denominator,
+            clocks_per_click=MIDI_CLOCKS_PER_CLICK,
+            notated_32nd_notes_per_beat=NOTATED_32ND_NOTES_PER_BEAT,
+            time=0,
+        )
+    )
+    conductor.append(mido.MetaMessage("end_of_track", time=0))
+    midi_file.tracks.append(conductor)
+
+    piano = mido.MidiTrack()
+    piano.append(mido.MetaMessage("track_name", name=PIANO_TRACK_NAME, time=0))
+    piano.append(
+        mido.Message("program_change", channel=PIANO_CHANNEL, program=PIANO_PROGRAM, time=0)
+    )
+    events = sort_events(
+        [
+            *note_events(project.notes, project.bpm, ppq),
+            *pedal_events(project.pedals, project.bpm, ppq),
+        ]
+    )
+    previous_tick = 0
+    for event in events:
+        piano.append(_to_message(event, event.tick - previous_tick))
+        previous_tick = event.tick
+    piano.append(mido.MetaMessage("end_of_track", time=0))
+    midi_file.tracks.append(piano)
+    return midi_file
+
+
+def export_midi(project: Project) -> bytes:
+    """Serialize the project as Standard MIDI File bytes."""
+    buffer = io.BytesIO()
+    build_midi_file(project).save(file=buffer)
+    return buffer.getvalue()
