@@ -2,6 +2,7 @@ import { editorReducer } from './editorReducer.ts';
 import {
   DEFAULT_EDITOR_STATE,
   clearSelection,
+  retainSelection,
   selectNotes,
   selectPedals,
   selectedNotes,
@@ -120,5 +121,26 @@ describe('selectedPedals', () => {
   it('returns selected pedals in project order and ignores unknown ids', () => {
     expect(selectedPedals(pedals, ['p2', 'zzz'])).toEqual([pedals[1]]);
     expect(selectedPedals(pedals, [])).toEqual([]);
+  });
+});
+
+describe('editor/retainSelection', () => {
+  it('drops selected note ids that are not in the list, keeping the order', () => {
+    const state: EditorState = { ...initial, selectedNoteIds: ['a', 'x', 'b'] };
+    expect(editorReducer(state, retainSelection(['a', 'b'], [])).selectedNoteIds).toEqual([
+      'a',
+      'b',
+    ]);
+  });
+
+  it('drops selected pedal ids that are not in the list', () => {
+    const state: EditorState = { ...initial, selectedPedalIds: ['p', 'q'] };
+    expect(editorReducer(state, retainSelection([], ['q'])).selectedPedalIds).toEqual(['q']);
+  });
+
+  it('returns the same state when nothing is dropped', () => {
+    const state: EditorState = { ...initial, selectedNoteIds: ['a', 'b'] };
+    expect(editorReducer(state, retainSelection(['b', 'a', 'c'], []))).toBe(state);
+    expect(editorReducer(initial, retainSelection([], []))).toBe(initial);
   });
 });
