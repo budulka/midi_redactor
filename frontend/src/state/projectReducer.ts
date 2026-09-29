@@ -173,6 +173,8 @@ export function projectReducer(state: Project, action: ProjectAction): Project {
     }
     case 'project/load':
       return action.project;
+    case 'project/replace':
+      return action.project === state ? state : action.project;
     default:
       return assertNever(action);
   }

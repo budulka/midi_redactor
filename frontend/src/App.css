@@ -172,6 +172,43 @@ body {
   font-size: 13px;
 }
 
+.import-button {
+  position: relative;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.import-button__error {
+  color: var(--err);
+  font-size: 13px;
+}
+
+.import-button__status {
+  max-width: 320px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-button__warnings {
+  font-size: 13px;
+}
+
+.import-button__warnings ul {
+  position: absolute;
+  top: 100%;
+  z-index: 10;
+  max-width: 480px;
+  margin: 0;
+  padding: 8px 8px 8px 24px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 13px;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -216,6 +253,11 @@ body {
   background: var(--bg);
   cursor: pointer;
   white-space: nowrap;
+}
+
+.file-load--disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .file-load:focus-within {
