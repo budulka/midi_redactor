@@ -5,6 +5,7 @@ import {
   addPedal,
   addPedals,
   loadProject,
+  replaceProject,
   removeNotes,
   removePedals,
   setBpm,
@@ -307,6 +308,19 @@ describe('project/load', () => {
     const state = makeState();
     const loaded = makeState({ bpm: 75, notes: [n2], pedals: [] });
     expect(projectReducer(state, loadProject(loaded))).toEqual(loaded);
+  });
+});
+
+describe('project/replace', () => {
+  it('replaces the whole state', () => {
+    const state = makeState();
+    const other = makeState({ bpm: 90, notes: [n2], pedals: [] });
+    expect(projectReducer(state, replaceProject(other))).toBe(other);
+  });
+
+  it('keeps the same state when replaced by itself', () => {
+    const state = makeState();
+    expect(projectReducer(state, replaceProject(state))).toBe(state);
   });
 });
 

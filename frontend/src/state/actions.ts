@@ -20,7 +20,8 @@ export type ProjectAction =
   | { readonly type: 'pedals/remove'; readonly ids: readonly string[] }
   | { readonly type: 'project/setBpm'; readonly bpm: number }
   | { readonly type: 'project/setTimeSignature'; readonly timeSignature: TimeSignature }
-  | { readonly type: 'project/load'; readonly project: Project };
+  | { readonly type: 'project/load'; readonly project: Project }
+  | { readonly type: 'project/replace'; readonly project: Project };
 
 export function addNote(input: Omit<Note, 'id'>): ProjectAction {
   return { type: 'notes/add', notes: [{ ...input, id: createId() }] };
@@ -72,4 +73,9 @@ export function setTimeSignature(timeSignature: TimeSignature): ProjectAction {
 
 export function loadProject(project: Project): ProjectAction {
   return { type: 'project/load', project };
+}
+
+/** Replaces the whole project as one undoable step (unlike `loadProject`, keeps the history). */
+export function replaceProject(project: Project): ProjectAction {
+  return { type: 'project/replace', project };
 }

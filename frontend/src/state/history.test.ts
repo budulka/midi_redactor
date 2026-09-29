@@ -4,6 +4,7 @@ import {
   addNotes,
   addPedals,
   loadProject,
+  replaceProject,
   setBpm,
   updateNote,
   updatePedal,
@@ -118,5 +119,28 @@ describe('historyReducer', () => {
     expect(next.past).toEqual([]);
     expect(next.future).toEqual([]);
     expect(next.present.bpm).toBe(140);
+  });
+
+  it('records a project replace as one undoable step', () => {
+    let history = addFirstNote();
+    const withNote = history.present;
+    const imported: Project = { ...createEmptyProject(), bpm: 90 };
+    history = historyReducer(history, replaceProject(imported));
+    expect(history.present).toBe(imported);
+    expect(history.past).toHaveLength(2);
+    expect(history.future).toEqual([]);
+
+    history = historyReducer(history, undo());
+    expect(history.present).toBe(withNote);
+    history = historyReducer(history, redo());
+    expect(history.present).toBe(imported);
+  });
+
+  it('clears the redo stack when a project is replaced after undo', () => {
+    let history = addFirstNote();
+    history = historyReducer(history, undo());
+    expect(history.future).toHaveLength(1);
+    history = historyReducer(history, replaceProject({ ...createEmptyProject(), bpm: 60 }));
+    expect(history.future).toEqual([]);
   });
 });
