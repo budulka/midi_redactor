@@ -35,8 +35,8 @@ body {
 
 .app {
   display: grid;
-  grid-template-columns: 1fr 360px;
-  grid-template-rows: auto 1fr;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
     'transport transport'
     'editor media';
@@ -54,6 +54,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  row-gap: 8px;
+  min-width: 0;
   padding: 8px 16px;
 }
 
@@ -74,7 +77,11 @@ body {
 .app__media {
   grid-area: media;
   display: grid;
-  grid-template-rows: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   gap: 1px;
   background: var(--border);
 }
@@ -84,6 +91,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 0;
+  /* A panel that is too short scrolls vertically, never horizontally. */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .placeholder {
@@ -287,6 +298,7 @@ body {
 .audio-track__overlay {
   position: absolute;
   inset: 0;
+  overflow-wrap: anywhere;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -309,6 +321,7 @@ body {
 
 .audio-track__error {
   margin: 0;
+  overflow-wrap: anywhere;
   color: var(--err);
   font-size: 13px;
 }
@@ -355,26 +368,33 @@ body {
 
 .video-player__stage {
   position: relative;
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   min-height: 120px;
+  overflow: hidden;
   background: #000;
 }
 
 .video-player__screen {
   position: absolute;
   inset: 0;
+  overflow: hidden;
 }
 
 .video-player__video {
   display: block;
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
+  object-position: center;
 }
 
 .video-player__overlay {
   position: absolute;
   inset: 0;
+  overflow-wrap: anywhere;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -419,6 +439,7 @@ body {
 
 .video-player__error {
   margin: 0;
+  overflow-wrap: anywhere;
   color: var(--err);
   font-size: 13px;
 }

@@ -56,7 +56,11 @@ export default function VideoPlayer() {
           accept={VIDEO_FILE_ACCEPT}
           onFile={loadFile}
         />
-        {fileName !== null && <span className="video-player__name">{fileName}</span>}
+        {fileName !== null && (
+          <span className="video-player__name" title={fileName}>
+            {fileName}
+          </span>
+        )}
         <button
           type="button"
           aria-label="Remove video"
