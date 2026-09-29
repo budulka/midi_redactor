@@ -110,11 +110,11 @@ def pedal_events(
         kept: list[TickSpan] = []
         for span, _pedal in group:
             if kept and kept[-1].off > span.on:
-                trimmed = TickSpan(kept[-1].on, span.on)
-                if trimmed.off <= trimmed.on:
+                # Pedals of one type never overlap in seconds, so this only happens when a
+                # sub-tick pedal was stretched to 1 tick; trimmed, it is empty and dropped.
+                kept[-1] = TickSpan(kept[-1].on, span.on)
+                if kept[-1].off <= kept[-1].on:
                     kept.pop()
-                else:
-                    kept[-1] = trimmed
             kept.append(span)
         controller = PEDAL_CONTROLLERS[pedal_type]
         down_order = (
