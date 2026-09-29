@@ -1,5 +1,7 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { addNotes } from '../state/actions.ts';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { addNotes, setBpm } from '../state/actions.ts';
+import { useProject } from '../state/projectContext.ts';
+import CommitNumberInput from './CommitNumberInput.tsx';
 import { useProjectDispatch } from '../state/projectContext.ts';
 import ProjectProvider from '../state/ProjectProvider.tsx';
 import type { Project } from '../state/types.ts';
@@ -182,5 +184,64 @@ describe('ExportButton', () => {
     });
     expect(downloadBlob).not.toHaveBeenCalled();
     expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  const ctrlS = { key: 's', code: 'KeyS', ctrlKey: true };
+
+  it('exports with Ctrl+S', async () => {
+    const { fetchMock, calls } = stubFetch();
+    renderButton();
+
+    expect(fireEvent.keyDown(document.body, ctrlS)).toBe(false);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(calls[0].url).toBe('/api/export/midi');
+    await settle(calls[0], okResponse);
+    expect(downloadBlob).toHaveBeenCalledWith(midiBlob, 'arrangement.mid');
+  });
+
+  it('ignores Ctrl+S while the request is pending', async () => {
+    const { fetchMock, calls } = stubFetch();
+    renderButton();
+
+    fireEvent.keyDown(document.body, ctrlS);
+    fireEvent.keyDown(document.body, ctrlS);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await settle(calls[0], okResponse);
+  });
+
+  function TempoField() {
+    const { bpm } = useProject();
+    const dispatch = useProjectDispatch();
+    return (
+      <CommitNumberInput label="Tempo" value={bpm} onCommit={(value) => dispatch(setBpm(value))} />
+    );
+  }
+
+  it('exports with Ctrl+S from a number field, committing its value first', async () => {
+    const { fetchMock, calls } = stubFetch();
+    render(
+      <ProjectProvider initialProject={initialProject}>
+        <ExportButton />
+        <TempoField />
+      </ProjectProvider>,
+    );
+    const field = screen.getByLabelText('Tempo');
+    field.focus();
+    fireEvent.change(field, { target: { value: '90' } });
+
+    expect(fireEvent.keyDown(field, ctrlS)).toBe(false);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect((JSON.parse(calls[0].init.body as string) as Project).bpm).toBe(90);
+    await settle(calls[0], okResponse);
+  });
+
+  it('shows the shortcut in the title', () => {
+    stubFetch();
+    renderButton();
+    const button = screen.getByRole('button', { name: 'Export .mid' });
+    expect(button).toHaveAttribute('title', 'Export .mid (Ctrl+S)');
   });
 });
