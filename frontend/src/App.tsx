@@ -1,5 +1,6 @@
 import AudioTrack from './components/AudioTrack.tsx';
 import BackendStatus from './components/BackendStatus.tsx';
+import ExportButton from './components/ExportButton.tsx';
 import ProjectInfo from './components/ProjectInfo.tsx';
 import PianoRoll from './components/PianoRoll/PianoRoll.tsx';
 import TempoControls from './components/TempoControls.tsx';
@@ -26,6 +27,7 @@ export default function App() {
                   <TempoControls />
                   <TransportControls />
                   <ProjectInfo />
+                  <ExportButton />
                   <BackendStatus />
                 </header>
                 <main className="app__editor" aria-label="MIDI editor">
