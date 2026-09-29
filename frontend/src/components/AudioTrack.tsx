@@ -42,7 +42,11 @@ export default function AudioTrack() {
           accept={AUDIO_FILE_ACCEPT}
           onFile={loadFile}
         />
-        {fileName !== null && <span className="audio-track__name">{fileName}</span>}
+        {fileName !== null && (
+          <span className="audio-track__name" title={fileName}>
+            {fileName}
+          </span>
+        )}
         <button
           type="button"
           aria-label="Remove audio"

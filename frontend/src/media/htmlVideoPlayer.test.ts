@@ -168,4 +168,12 @@ describe('createHtmlVideoPlayer', () => {
     player.setMuted(false);
     expect(video.muted).toBe(false);
   });
+
+  it('sizes the video only through CSS', () => {
+    const { video } = setup();
+    expect(video.hasAttribute('width')).toBe(false);
+    expect(video.hasAttribute('height')).toBe(false);
+    expect(video.hasAttribute('style')).toBe(false);
+    expect(video.className).toBe('video-player__video');
+  });
 });

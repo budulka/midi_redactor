@@ -15,5 +15,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/setupTests.ts'],
     exclude: [...configDefaults.exclude, 'e2e/**'],
+    // Stylesheets stay disabled in tests, except `?raw` imports that pin CSS rules as text.
+    css: { include: [/\.css\?raw$/] },
   },
 });

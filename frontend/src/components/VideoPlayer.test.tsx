@@ -195,4 +195,18 @@ describe('VideoPlayer', () => {
     expect(screen.getByText(/MP4, WebM/)).toBeInTheDocument();
     expect(button('Remove video')).toBeDisabled();
   });
+
+  it('keeps the screen inside the clipping stage', () => {
+    const { player } = setup();
+    const screenElement = screen.getByTestId('video-screen');
+    expect(screenElement).toHaveClass('video-player__screen');
+    expect(screenElement.parentElement).toHaveClass('video-player__stage');
+
+    const longName = 'v'.repeat(120) + '.mp4';
+    choose(longName, 'video/mp4');
+    act(() => player().emitReady(65));
+    const name = document.querySelector('.video-player__name');
+    expect(name).toHaveTextContent(longName);
+    expect(name).toHaveAttribute('title', longName);
+  });
 });
