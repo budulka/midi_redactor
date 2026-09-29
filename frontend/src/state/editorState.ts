@@ -30,6 +30,11 @@ export type EditorAction =
   | { readonly type: 'editor/selectNotes'; readonly ids: readonly string[] }
   | { readonly type: 'editor/selectPedals'; readonly ids: readonly string[] }
   | { readonly type: 'editor/clearSelection' }
+  | {
+      readonly type: 'editor/retainSelection';
+      readonly noteIds: readonly string[];
+      readonly pedalIds: readonly string[];
+    }
   | { readonly type: 'editor/setFollowPlayhead'; readonly followPlayhead: boolean };
 
 export function setGridDivision(gridDivision: GridDivision): EditorAction {
@@ -57,6 +62,14 @@ export function selectPedals(ids: readonly string[]): EditorAction {
 /** Clears both the note and the pedal selection. */
 export function clearSelection(): EditorAction {
   return { type: 'editor/clearSelection' };
+}
+
+/** Keeps in the selection only the ids that are present in the given lists (existing items). */
+export function retainSelection(
+  noteIds: readonly string[],
+  pedalIds: readonly string[],
+): EditorAction {
+  return { type: 'editor/retainSelection', noteIds, pedalIds };
 }
 
 export function setFollowPlayhead(followPlayhead: boolean): EditorAction {

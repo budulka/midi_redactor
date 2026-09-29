@@ -1,6 +1,7 @@
 import { updateNotes } from '../../state/actions.ts';
 import { useEditor, useEditorDispatch } from '../../state/editorContext.ts';
 import { selectedNotes, setGridDivision, setSnap, setZoom } from '../../state/editorState.ts';
+import { useHistoryApi, useHistoryState } from '../../state/historyContext.ts';
 import { useProject, useProjectDispatch } from '../../state/projectContext.ts';
 import {
   MAX_PIXELS_PER_SECOND,
@@ -14,6 +15,7 @@ import {
   quantizeNote,
   type GridDivision,
 } from '../../utils/quantize.ts';
+import { SHORTCUT_HINTS } from '../../utils/shortcuts.ts';
 import NoteInspector from './NoteInspector.tsx';
 
 function divisionLabel(division: GridDivision): string {
@@ -29,6 +31,8 @@ export default function PianoRollToolbar() {
   const { gridDivision, snapEnabled, pixelsPerSecond, selectedNoteIds } = useEditor();
   const projectDispatch = useProjectDispatch();
   const editorDispatch = useEditorDispatch();
+  const { canUndo, canRedo } = useHistoryState();
+  const history = useHistoryApi();
   const selected = selectedNotes(notes, selectedNoteIds);
 
   function quantizeSelected() {
@@ -45,6 +49,24 @@ export default function PianoRollToolbar() {
 
   return (
     <div className="piano-roll-toolbar" role="toolbar" aria-label="Piano roll tools">
+      <button
+        type="button"
+        aria-label="Undo"
+        title={`Undo (${SHORTCUT_HINTS.undo})`}
+        disabled={!canUndo}
+        onClick={history.undo}
+      >
+        Undo
+      </button>
+      <button
+        type="button"
+        aria-label="Redo"
+        title={`Redo (${SHORTCUT_HINTS.redo})`}
+        disabled={!canRedo}
+        onClick={history.redo}
+      >
+        Redo
+      </button>
       <label>
         Grid{' '}
         <select

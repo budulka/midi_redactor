@@ -1,6 +1,7 @@
 import AudioTrack from './components/AudioTrack.tsx';
 import BackendStatus from './components/BackendStatus.tsx';
 import ExportButton from './components/ExportButton.tsx';
+import KeyboardShortcuts from './components/KeyboardShortcuts.tsx';
 import ProjectInfo from './components/ProjectInfo.tsx';
 import PianoRoll from './components/PianoRoll/PianoRoll.tsx';
 import TempoControls from './components/TempoControls.tsx';
@@ -10,6 +11,7 @@ import AudioTrackProvider from './state/AudioTrackProvider.tsx';
 import MediaSyncBridge from './state/MediaSyncBridge.tsx';
 import EditorProvider from './state/EditorProvider.tsx';
 import ProjectProvider from './state/ProjectProvider.tsx';
+import SelectionSync from './state/SelectionSync.tsx';
 import TransportProvider from './state/TransportProvider.tsx';
 import VideoProvider from './state/VideoProvider.tsx';
 
@@ -21,6 +23,8 @@ export default function App() {
           <AudioTrackProvider>
             <VideoProvider>
               <MediaSyncBridge />
+              <SelectionSync />
+              <KeyboardShortcuts />
               <div className="app">
                 <header className="app__transport" aria-label="Transport">
                   <h1 className="app__title">MIDI Redactor</h1>

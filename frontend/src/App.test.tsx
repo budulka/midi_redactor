@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import App from './App.tsx';
 import { loadPianoEngine } from './audio/loadEngine.ts';
 import { createWaveSurferPlayer } from './audio/waveSurferPlayer.ts';
@@ -103,5 +103,23 @@ describe('App', () => {
     const urls = vi.mocked(fetch).mock.calls.map(([url]) => url);
     expect(urls.length).toBeGreaterThan(0);
     expect(urls.every((url) => url === '/api/health')).toBe(true);
+  });
+
+  it('shows undo and redo', async () => {
+    render(<App />);
+    const pianoRoll = within(screen.getByRole('region', { name: 'Piano roll' }));
+    expect(pianoRoll.getByRole('button', { name: 'Undo' })).toBeDisabled();
+    expect(pianoRoll.getByRole('button', { name: 'Redo' })).toBeDisabled();
+    expect(await screen.findByText('backend: online')).toBeInTheDocument();
+  });
+
+  it('keeps Space in the tempo field', async () => {
+    render(<App />);
+    const tempo = screen.getByLabelText('Tempo (quarter notes per minute)');
+    tempo.focus();
+    fireEvent.keyDown(tempo, { key: ' ', code: 'Space' });
+    expect(loadPianoEngine).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    expect(await screen.findByText('backend: online')).toBeInTheDocument();
   });
 });

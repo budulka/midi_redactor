@@ -46,4 +46,30 @@ describe('PianoRollToolbar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Quantize' }));
     expect(readNotes(screen)[0]).toMatchObject({ start: 0.25, duration: 0.25 });
   });
+
+  it('undoes and redoes a quantize', () => {
+    renderWithProviders(
+      <PianoRollToolbar />,
+      [{ id: 'a', pitch: 60, start: 0.52, duration: 0.5, velocity: 100 }],
+      { selectedNoteIds: ['a'] },
+    );
+    const undoButton = screen.getByRole('button', { name: 'Undo' });
+    const redoButton = screen.getByRole('button', { name: 'Redo' });
+    expect(undoButton).toBeDisabled();
+    expect(redoButton).toBeDisabled();
+    expect(undoButton).toHaveAttribute('title', 'Undo (Ctrl+Z)');
+    expect(redoButton).toHaveAttribute('title', 'Redo (Ctrl+Shift+Z)');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quantize' }));
+    expect(readNotes(screen)[0]?.start).toBe(0.5);
+    expect(undoButton).toBeEnabled();
+
+    fireEvent.click(undoButton);
+    expect(readNotes(screen)[0]?.start).toBe(0.52);
+    expect(redoButton).toBeEnabled();
+
+    fireEvent.click(redoButton);
+    expect(readNotes(screen)[0]?.start).toBe(0.5);
+    expect(redoButton).toBeDisabled();
+  });
 });

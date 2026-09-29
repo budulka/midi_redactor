@@ -5,6 +5,13 @@ function sameIds(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((id, index) => id === b[index]);
 }
 
+function retainIds(ids: readonly string[], allowed: readonly string[]): readonly string[] {
+  if (ids.length === 0) return ids;
+  const allowedIds = new Set(allowed);
+  const kept = ids.filter((id) => allowedIds.has(id));
+  return kept.length === ids.length ? ids : kept;
+}
+
 function assertNever(action: never): never {
   throw new Error(`Unknown editor action: ${JSON.stringify(action)}`);
 }
@@ -37,6 +44,14 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return state.selectedNoteIds.length === 0 && state.selectedPedalIds.length === 0
         ? state
         : { ...state, selectedNoteIds: [], selectedPedalIds: [] };
+    case 'editor/retainSelection': {
+      const selectedNoteIds = retainIds(state.selectedNoteIds, action.noteIds);
+      const selectedPedalIds = retainIds(state.selectedPedalIds, action.pedalIds);
+      return selectedNoteIds === state.selectedNoteIds &&
+        selectedPedalIds === state.selectedPedalIds
+        ? state
+        : { ...state, selectedNoteIds, selectedPedalIds };
+    }
     case 'editor/setFollowPlayhead':
       return action.followPlayhead === state.followPlayhead
         ? state

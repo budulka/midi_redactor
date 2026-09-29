@@ -177,6 +177,16 @@
   cursor: ew-resize;
 }
 
+/* Selection rectangle; notes have no z-index, the sticky ruler and keyboard stay above it. */
+.note-grid__marquee {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px dashed var(--note-selected);
+  background: rgba(240, 179, 91, 0.12);
+  pointer-events: none;
+  z-index: 1;
+}
+
 .note-tail {
   position: absolute;
   background: var(--note);
