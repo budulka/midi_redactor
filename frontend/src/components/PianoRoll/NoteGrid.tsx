@@ -1,12 +1,13 @@
 import { memo, useCallback, useMemo, useRef } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
-import { addNotes, removeNotes, updateNote } from '../../state/actions.ts';
+import { addNotes, removeNotes, updateNotes } from '../../state/actions.ts';
 import { useEditor, useEditorDispatch } from '../../state/editorContext.ts';
 import { clearSelection, selectNotes, selectedNotes } from '../../state/editorState.ts';
 import { useProject, useProjectDispatch } from '../../state/projectContext.ts';
-import type { Note, NotePatch } from '../../state/types.ts';
+import type { Note } from '../../state/types.ts';
 import { focusFromPointer } from '../../utils/focus.ts';
-import { withPreview, type DragOptions } from '../../utils/noteEditing.ts';
+import { translateNotes, withPreviews } from '../../utils/groupEditing.ts';
+import type { DragOptions } from '../../utils/noteEditing.ts';
 import { noteSoundingEnds } from '../../utils/pedalEffects.ts';
 import {
   ROW_HEIGHT_PX,
@@ -23,6 +24,7 @@ import {
 } from '../../utils/pianoRollGeometry.ts';
 import { KEYBOARD_PITCHES, isBlackKey, pitchName } from '../../utils/pitch.ts';
 import { gridStepSeconds } from '../../utils/quantize.ts';
+import { editorShortcutFor, globalShortcutFor } from '../../utils/shortcuts.ts';
 import { useNoteDrag } from './useNoteDrag.ts';
 import { useMediaDuration } from '../../state/timelineContext.ts';
 
@@ -85,9 +87,14 @@ const GRID_ROWS = KEYBOARD_PITCHES.map((pitch) => (
   />
 ));
 
+/** Semitone offsets of the vertical arrow shortcuts. */
+const PITCH_NUDGES = { nudgeUp: 1, nudgeDown: -1, octaveUp: 12, octaveDown: -12 } as const;
+
 /**
- * The editable grid: renders notes and handles create/move/resize (mouse), delete (right click,
- * Delete/Backspace while focused) and cancel (Escape during a gesture).
+ * The editable grid: renders notes and handles create/move/resize of one or all selected notes
+ * (mouse), additive selection and the selection rectangle (Shift/Ctrl/⌘), delete (right click,
+ * Delete/Backspace while focused), Ctrl/⌘+A, Escape (clears the selection or cancels a gesture)
+ * and the arrow keys (move the selected notes).
  */
 export default function NoteGrid() {
   const project = useProject();
@@ -111,8 +118,9 @@ export default function NoteGrid() {
     return { x: event.clientX - (rect?.left ?? 0), y: event.clientY - (rect?.top ?? 0) };
   }, []);
 
-  const { preview, onMouseDown } = useNoteDrag({
+  const { preview, onMouseDown, isGestureActive } = useNoteDrag({
     notes,
+    selectedIds: selectedNoteIds,
     geometry,
     dragOptions,
     getLocalPoint,
@@ -120,12 +128,14 @@ export default function NoteGrid() {
       projectDispatch(addNotes([note]));
       editorDispatch(selectNotes([note.id]));
     },
-    onCommitUpdate: (id: string, patch: NotePatch) => projectDispatch(updateNote(id, patch)),
+    onCommitUpdate: (changes) => projectDispatch(updateNotes(changes)),
     onSelect: (ids: readonly string[]) => editorDispatch(selectNotes(ids)),
   });
 
-  const displayed = withPreview(notes, preview);
+  const displayed = preview?.kind === 'notes' ? withPreviews(notes, preview.notes) : notes;
+  const marquee = preview?.kind === 'marquee' ? preview : null;
   const selectedIds = useMemo(() => new Set(selectedNoteIds), [selectedNoteIds]);
+  const marqueeIds = useMemo(() => new Set(marquee?.ids ?? []), [marquee]);
   const mediaDuration = useMediaDuration();
   const soundingEnds = useMemo(() => noteSoundingEnds(displayed, pedals), [displayed, pedals]);
   const size = gridContentSize(
@@ -152,11 +162,47 @@ export default function NoteGrid() {
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key !== 'Delete' && event.key !== 'Backspace') return;
-    event.preventDefault();
-    const ids = selectedNotes(notes, selectedNoteIds).map((note) => note.id);
-    if (ids.length > 0) projectDispatch(removeNotes(ids));
-    if (selectedNoteIds.length > 0) editorDispatch(clearSelection());
+    if (isGestureActive()) {
+      // Undo/redo in the middle of a gesture would be overwritten by its commit on mouseup.
+      const global = globalShortcutFor(event, event.target);
+      if (global === 'undo' || global === 'redo') event.preventDefault();
+    }
+    const shortcut = editorShortcutFor(event);
+    if (shortcut === null) return;
+    const selected = selectedNotes(notes, selectedNoteIds);
+    switch (shortcut) {
+      case 'selectAll':
+        event.preventDefault();
+        editorDispatch(selectNotes(notes.map((note) => note.id)));
+        return;
+      case 'delete':
+        event.preventDefault();
+        if (selected.length > 0) projectDispatch(removeNotes(selected.map((note) => note.id)));
+        if (selectedNoteIds.length > 0) editorDispatch(clearSelection());
+        return;
+      case 'clearSelection':
+        // During a gesture Escape cancels it (window listener of useDragGesture) and keeps the selection.
+        if (isGestureActive() || selectedNoteIds.length === 0) return;
+        event.preventDefault();
+        editorDispatch(clearSelection());
+        return;
+      default: {
+        if (selected.length === 0) return;
+        event.preventDefault();
+        const step = gridStepSeconds(gridDivision, bpm);
+        const dt = shortcut === 'nudgeLeft' ? -step : shortcut === 'nudgeRight' ? step : 0;
+        const dp =
+          shortcut === 'nudgeLeft' || shortcut === 'nudgeRight' ? 0 : PITCH_NUDGES[shortcut];
+        projectDispatch(
+          updateNotes(
+            translateNotes(selected, dt, dp).map((note) => ({
+              id: note.id,
+              patch: { start: note.start, pitch: note.pitch },
+            })),
+          ),
+        );
+      }
+    }
   }
 
   return (
@@ -187,9 +233,21 @@ export default function NoteGrid() {
           key={note.id}
           note={note}
           geometry={geometry}
-          selected={selectedIds.has(note.id)}
+          selected={selectedIds.has(note.id) || marqueeIds.has(note.id)}
         />
       ))}
+      {marquee !== null && (
+        <div
+          className="note-grid__marquee"
+          data-testid="marquee"
+          style={{
+            left: marquee.rect.x,
+            top: marquee.rect.y,
+            width: marquee.rect.width,
+            height: marquee.rect.height,
+          }}
+        />
+      )}
     </div>
   );
 }

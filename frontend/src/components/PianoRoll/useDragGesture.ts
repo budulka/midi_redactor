@@ -25,6 +25,8 @@ export interface DragGesture<T> {
   /** The item being created or changed, shown instead of the stored one until mouseup. */
   readonly preview: T | null;
   readonly begin: (spec: GestureSpec<T>) => void;
+  /** True between `begin` and the end of the gesture (mouseup, Escape or unmount); stable. */
+  readonly isActive: () => boolean;
 }
 
 interface ActiveGesture<T> {
@@ -104,5 +106,7 @@ export function useDragGesture<T>(getLocalPoint: (event: PointerLike) => Point):
     detachRef.current = finish;
   }, []);
 
-  return { preview, begin };
+  const isActive = useCallback(() => detachRef.current !== null, []);
+
+  return { preview, begin, isActive };
 }
