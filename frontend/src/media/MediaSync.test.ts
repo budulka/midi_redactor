@@ -39,8 +39,7 @@ function makeController() {
   return { controller, player, load };
 }
 
-function setup() {
-  const clock = new FakeSyncClock();
+function setup(clock = new FakeSyncClock()) {
   let timer: (() => void) | null = null;
   let activeTimers = 0;
   const env = { clockNow: 0 };
@@ -528,5 +527,152 @@ describe('MediaSync', () => {
       track.player().emitReady(30);
       expect(sync.getMediaDuration()).toBe(30);
     });
+  });
+});
+
+describe('MediaSync with a media offset', () => {
+  it('shows the frame at the offset while stopped or paused', () => {
+    const { clock, sync, readyTrack } = setup();
+    sync.setTimeMap({ offset: 2 });
+    const { controller, player } = readyTrack();
+    sync.attach(controller);
+    expect(setTimes(player()).at(-1)).toBe('setTime:2');
+    clock.set({ position: 5 });
+    expect(setTimes(player()).at(-1)).toBe('setTime:7');
+  });
+
+  it('moves paused media to the new frame when the map changes', () => {
+    const { clock, sync, readyTrack } = setup();
+    const { controller, player } = readyTrack();
+    clock.set({ status: 'paused', position: 5 });
+    sync.attach(controller);
+    expect(player().currentTime).toBe(5);
+    player().calls.length = 0;
+    sync.setTimeMap({ offset: 1.5 });
+    expect(setTimes(player())).toEqual(['setTime:6.5']);
+    sync.setTimeMap({ offset: 1.5 });
+    expect(setTimes(player())).toEqual(['setTime:6.5']);
+    expect(sync.getTimeMap()).toEqual({ offset: 1.5 });
+  });
+
+  it('corrects playing media at once, without waiting for the seek cooldown', () => {
+    const { clock, sync, readyTrack, fireTimer, env } = setup();
+    const { controller, player } = readyTrack();
+    sync.attach(controller);
+    clock.set({ status: 'playing' });
+    clock.position = 5;
+    player().currentTime = 3;
+    fireTimer();
+    expect(setTimes(player()).at(-1)).toBe('setTime:5');
+    player().calls.length = 0;
+    sync.setTimeMap({ offset: 3 });
+    expect(env.clockNow).toBe(0);
+    expect(setTimes(player())).toEqual(['setTime:8']);
+  });
+
+  it('reports where the media ends on the timeline', () => {
+    const { sync, readyTrack } = setup();
+    const listener = vi.fn();
+    sync.subscribe(listener);
+    sync.attach(readyTrack(30).controller);
+    listener.mockClear();
+    sync.setTimeMap({ offset: 2 });
+    expect(sync.getMediaDuration()).toBe(28);
+    expect(listener).toHaveBeenCalledTimes(1);
+    sync.setTimeMap({ offset: -3 });
+    expect(sync.getMediaDuration()).toBe(33);
+    expect(listener).toHaveBeenCalledTimes(2);
+    sync.setTimeMap({ offset: 40 });
+    expect(sync.getMediaDuration()).toBe(0);
+    expect(listener).toHaveBeenCalledTimes(3);
+    sync.setTimeMap({ offset: 50 });
+    expect(sync.getMediaDuration()).toBe(0);
+    expect(listener).toHaveBeenCalledTimes(3);
+  });
+
+  it('maps a seek by the user onto the timeline', () => {
+    const { clock, sync, readyTrack } = setup();
+    const { controller } = readyTrack();
+    clock.set({ status: 'paused' });
+    sync.attach(controller);
+    sync.setTimeMap({ offset: 2 });
+    controller.seek(10);
+    expect(clock.seeks.at(-1)).toBe(8);
+    controller.seek(1);
+    expect(clock.seeks.at(-1)).toBe(0);
+  });
+
+  it.each([
+    ['paused', 1],
+    ['stopped', 0],
+  ] as const)(
+    'brings the media back to bar 1 after a seek into the intro while %s at bar 1',
+    (status, seconds) => {
+      const { clock, sync, readyTrack } = setup(new FakeSyncClock({ notifyUnchangedSeek: false }));
+      const { controller, player } = readyTrack(30);
+      clock.set({ status, position: 0 });
+      sync.setTimeMap({ offset: 2 });
+      sync.attach(controller);
+      expect(player().currentTime).toBe(2);
+      player().calls.length = 0;
+      controller.seek(seconds);
+      expect(clock.seeks.at(-1)).toBe(0);
+      expect(setTimes(player())[0]).toBe(`setTime:${seconds}`);
+      expect(setTimes(player()).at(-1)).toBe('setTime:2');
+    },
+  );
+
+  it('makes no extra seek when the media already matches the clock', () => {
+    const { clock, sync, readyTrack } = setup(new FakeSyncClock({ notifyUnchangedSeek: false }));
+    const { controller, player } = readyTrack(30);
+    clock.set({ status: 'paused', position: 0 });
+    sync.attach(controller);
+    player().calls.length = 0;
+    controller.seek(5);
+    expect(clock.seeks.at(-1)).toBe(5);
+    expect(setTimes(player())).toEqual(['setTime:5']);
+  });
+
+  it('does not pull the timeline back to the end of a media with an offset', () => {
+    const { clock, sync, readyTrack } = setup();
+    const { controller } = readyTrack(30);
+    clock.set({ status: 'paused', position: 40 });
+    sync.setTimeMap({ offset: 2 });
+    sync.attach(controller);
+    controller.seek(30);
+    expect(clock.seeks).toEqual([]);
+    clock.set({ position: 20 });
+    controller.seek(30);
+    expect(clock.seeks.at(-1)).toBe(28);
+  });
+
+  it('keeps the media on its first frame until the timeline reaches it', () => {
+    const { clock, sync, readyTrack, fireTimer } = setup();
+    const { controller, player } = readyTrack(30);
+    sync.setTimeMap({ offset: -2 });
+    sync.attach(controller);
+    clock.set({ status: 'playing', position: 1 });
+    expect(player().calls).not.toContain('play');
+    expect(player().currentTime).toBe(0);
+    player().calls.length = 0;
+    clock.position = 2.5;
+    fireTimer();
+    const tail = player().calls.filter((c) => c === 'play' || c.startsWith('setTime:'));
+    expect(tail[0]).toBe('setTime:0.5');
+    expect(tail[1]).toBe('play');
+  });
+
+  it('applies a new map and a clock seek in one pass', () => {
+    const { clock, sync, readyTrack } = setup();
+    const { controller, player } = readyTrack(30);
+    clock.set({ status: 'paused', position: 5 });
+    sync.attach(controller);
+    expect(player().currentTime).toBe(5);
+    player().calls.length = 0;
+    sync.batch(() => {
+      sync.setTimeMap({ offset: 3 });
+      clock.seek(0);
+    });
+    expect(setTimes(player())).toEqual(['setTime:3']);
   });
 });

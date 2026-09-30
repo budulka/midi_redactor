@@ -247,3 +247,40 @@ describe('afterTransportCommand', () => {
     });
   });
 });
+
+describe('planMediaSync before the media starts (negative offset)', () => {
+  it('keeps waiting media on its first frame', () => {
+    const { action, state } = plan({ target: -0.5, mediaTime: 0, mediaPlaying: false });
+    expect(action).toEqual({ seekTo: null, play: false, pause: false, nudge: 1 });
+    expect(state.playRequested).toBe(false);
+  });
+
+  it('pauses playing media and puts it on its first frame', () => {
+    const { action } = plan({ target: -0.5, mediaTime: 0.3, mediaPlaying: true });
+    expect(action).toEqual({ seekTo: 0, play: false, pause: true, nudge: 1 });
+  });
+
+  it('forgets a pending play request', () => {
+    const { action, state } = plan(
+      { target: -0.5, mediaTime: 0, mediaPlaying: false },
+      { playRequested: true },
+    );
+    expect(action.play).toBe(false);
+    expect(state.playRequested).toBe(false);
+  });
+
+  it('starts the media once the target reaches it', () => {
+    const { action } = plan({ target: 0.07, mediaTime: 0, mediaPlaying: false });
+    expect(action).toMatchObject({ seekTo: 0.07, play: true });
+  });
+
+  it('shows the first frame while the transport does not play', () => {
+    const { action } = plan({
+      transportPlaying: false,
+      target: -0.5,
+      mediaTime: 0.3,
+      mediaPlaying: false,
+    });
+    expect(action.seekTo).toBe(0);
+  });
+});

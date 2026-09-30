@@ -48,7 +48,11 @@ export const INITIAL_TRACK_SYNC_STATE: TrackSyncState = {
 
 export interface MediaSyncInput {
   readonly transportPlaying: boolean;
-  /** Where the media should be: the timeline position, seconds. */
+  /**
+   * Where the media should be: media seconds of the timeline position (may be negative: the media
+   * has not started yet; it starts on the first check after target reaches 0, up to
+   * SYNC_INTERVAL_MS late, and the drift correction catches up).
+   */
   readonly target: number;
   /** Media currentTime, seconds. */
   readonly mediaTime: number;
@@ -111,6 +115,15 @@ export function planMediaSync(input: MediaSyncInput, state: TrackSyncState): Med
     const seekTo =
       Math.abs(mediaTime - clampedTarget) > SEEK_EPSILON_SECONDS ? clampedTarget : null;
     return withNudge({ seekTo, play: false, pause: mediaPlaying, nudge: 1 });
+  }
+
+  if (target < 0) {
+    // The media starts after bar 1 (a negative offset): it waits on its first frame.
+    const seekTo = mediaTime > SEEK_EPSILON_SECONDS ? 0 : null;
+    return withNudge(
+      { seekTo, play: false, pause: mediaPlaying, nudge: 1 },
+      { ...state, playRequested: false },
+    );
   }
 
   if (target >= duration) {

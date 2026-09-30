@@ -1,3 +1,11 @@
+import {
+  IDENTITY_MEDIA_TIME_MAP,
+  mediaTimelineEnd,
+  mediaToTimeline,
+  sameMediaTimeMap,
+  timelineToMedia,
+  type MediaTimeMap,
+} from '../utils/mediaTimeMap.ts';
 import type { MediaTrackSnapshot } from './MediaTrackController.ts';
 import {
   afterTransportCommand,
@@ -61,7 +69,8 @@ const defaultNow = (): number => performance.now() / 1000;
 /**
  * Keeps media tracks at the position, the status and the rate of the clock. The clock is the
  * master: paused media shows the frame at the clock position, playing media is pulled towards it
- * (see planMediaSync), and a seek made by the user in a media track moves the clock.
+ * (see planMediaSync), and a seek made by the user in a media track moves the clock. Media time
+ * maps onto the timeline through a MediaTimeMap (the media offset: the media second at bar 1).
  */
 export class MediaSync {
   private readonly clock: SyncClock;
@@ -75,6 +84,7 @@ export class MediaSync {
   private mediaDuration = 0;
   private syncing = false;
   private resyncRequested = false;
+  private timeMap: MediaTimeMap = IDENTITY_MEDIA_TIME_MAP;
 
   constructor(clock: SyncClock, options: MediaSyncOptions = {}) {
     this.clock = clock;
@@ -107,7 +117,43 @@ export class MediaSync {
     for (const entry of [...this.entries]) this.detach(entry);
   }
 
-  /** Longest duration of the ready tracks, seconds; 0 without media. */
+  /**
+   * Maps media time onto the timeline; paused media moves to the new frame, playing media is
+   * corrected at once.
+   */
+  setTimeMap(map: MediaTimeMap): void {
+    if (sameMediaTimeMap(map, this.timeMap)) return;
+    this.timeMap = map;
+    // A new mapping is like a transport command: the correction seek happens at once.
+    for (const entry of this.entries) entry.sync = afterTransportCommand(entry.sync);
+    this.updateMediaDuration();
+    this.syncAll();
+  }
+
+  getTimeMap(): MediaTimeMap {
+    return this.timeMap;
+  }
+
+  /**
+   * Runs `update` (e.g. setTimeMap and a clock seek) and then one sync pass, so no intermediate
+   * position reaches the media.
+   */
+  batch(update: () => void): void {
+    if (this.syncing) {
+      update();
+      this.resyncRequested = true;
+      return;
+    }
+    this.runSync(() => {
+      update();
+      this.resyncRequested = true;
+    });
+  }
+
+  /**
+   * Timeline second where the longest ready media ends (its duration mapped onto the timeline),
+   * seconds; 0 without media.
+   */
   getMediaDuration = (): number => this.mediaDuration;
 
   /** Notifies the listener when the media duration changes. */
@@ -174,13 +220,22 @@ export class MediaSync {
     this.runSync(() => this.syncTrack(entry));
   }
 
+  /** A seek by the user to `seconds` of the media (media time). */
   private onTrackSeek(entry: TrackEntry, seconds: number): void {
     const { duration } = entry.track.getSnapshot();
+    // A media second before bar 1 (the intro before the offset) seeks to bar 1.
+    const timeline = Math.max(0, mediaToTimeline(seconds, this.timeMap));
     // A seek clamped to the end of a media that the timeline has already passed (e.g. "+5 s" on
     // a video shorter than the arrangement) would pull the whole timeline back; it is ignored.
     const atEnd = seconds >= duration - SEEK_EPSILON_SECONDS;
-    if (atEnd && this.clock.getPosition() >= seconds) return;
-    this.clock.seek(seconds);
+    if (atEnd && this.clock.getPosition() >= timeline) return;
+    this.clock.seek(timeline);
+    // The clock may not notify when its position does not change (Transport.seek to the same
+    // paused position), but the media has already moved to `seconds`: one sync pass always
+    // follows. When the clock did notify, this pass finds nothing to do.
+    this.runSync(() => {
+      this.resyncRequested = true;
+    });
   }
 
   private readonly syncAll = (): void => {
@@ -219,7 +274,7 @@ export class MediaSync {
     const { action, state } = planMediaSync(
       {
         transportPlaying: this.clock.getSnapshot().status === 'playing',
-        target: this.clock.getPosition(),
+        target: timelineToMedia(this.clock.getPosition(), this.timeMap),
         mediaTime: track.getCurrentTime(),
         duration: snapshot.duration,
         mediaPlaying: snapshot.playing,
@@ -247,7 +302,7 @@ export class MediaSync {
   }
 
   /**
-   * Longest duration of the ready tracks. While a track is loading a file, the duration does not
+   * Timeline end of the longest ready track. While a track is loading a file, the duration does not
    * shrink: a replaced file keeps the timeline (and the playing transport) where it was until the
    * new file is ready or fails.
    */
@@ -256,7 +311,9 @@ export class MediaSync {
     let loading = false;
     for (const { track } of this.entries) {
       const snapshot = track.getSnapshot();
-      if (snapshot.status === 'ready') ready = Math.max(ready, snapshot.duration);
+      if (snapshot.status === 'ready') {
+        ready = Math.max(ready, mediaTimelineEnd(snapshot.duration, this.timeMap));
+      }
       if (snapshot.status === 'loading') loading = true;
     }
     const duration = loading ? Math.max(ready, this.mediaDuration) : ready;
