@@ -61,7 +61,8 @@ export default function ImportButton() {
       }
       transportApi.stop();
       editorDispatch(clearSelection());
-      dispatch(replaceProject(result.project));
+      // A MIDI file knows nothing about the media: the loaded media keeps its bar 1.
+      dispatch(replaceProject({ ...result.project, mediaOffset: current.mediaOffset }));
       setOutcome({ summary: importSummary(file.name, result.project), warnings: result.warnings });
     } catch (caught) {
       if (controller.signal.aborted) return;
