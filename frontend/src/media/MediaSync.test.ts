@@ -3,6 +3,7 @@ import { detectFormat } from '../utils/mediaFormats.ts';
 import { MediaSync } from './MediaSync.ts';
 import { MAX_CORRECTION_SEEKS } from './mediaSyncRules.ts';
 import { MediaTrackController } from './MediaTrackController.ts';
+import { keepSingleMediaSource } from './singleMediaSource.ts';
 import { createFakeMediaPlayers, type FakeMediaPlayer } from './testing/FakeMediaPlayer.ts';
 import { FakeSyncClock } from './testing/FakeSyncClock.ts';
 
@@ -453,6 +454,79 @@ describe('MediaSync', () => {
       player().calls.length = 0;
       clock.set({ position: 50 });
       expect(setTimes(player())).toHaveLength(1);
+    });
+  });
+
+  describe('media duration while a file is replaced', () => {
+    function attachedReady(duration: number) {
+      const context = setup();
+      const listener = vi.fn();
+      context.sync.subscribe(listener);
+      const track = context.readyTrack(duration);
+      context.sync.attach(track.controller);
+      listener.mockClear();
+      return { ...context, listener, track };
+    }
+
+    it('keeps the duration while the same track loads another file', () => {
+      const { sync, listener, track } = attachedReady(180);
+      expect(sync.getMediaDuration()).toBe(180);
+      track.load();
+      expect(track.controller.getSnapshot().status).toBe('loading');
+      expect(sync.getMediaDuration()).toBe(180);
+      expect(listener).not.toHaveBeenCalled();
+      track.player().emitReady(120);
+      expect(sync.getMediaDuration()).toBe(120);
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('drops the duration when the new file fails', () => {
+      const { sync, track } = attachedReady(180);
+      track.load();
+      track.player().emitError();
+      expect(sync.getMediaDuration()).toBe(0);
+    });
+
+    it('grows with a longer new file', () => {
+      const { sync, track } = attachedReady(60);
+      track.load();
+      track.player().emitReady(200);
+      expect(sync.getMediaDuration()).toBe(200);
+    });
+
+    it('keeps the duration while another track replaces the file', () => {
+      const { sync, listener, track: a } = attachedReady(180);
+      const b = makeController();
+      sync.attach(b.controller);
+      keepSingleMediaSource([a.controller, b.controller]);
+      // Recorded on every duration change, so a drop to 0 in the middle of load() shows up too.
+      const durations: number[] = [];
+      sync.subscribe(() => durations.push(sync.getMediaDuration()));
+      b.load();
+      expect(a.controller.getSnapshot().status).toBe('empty');
+      expect(b.controller.getSnapshot().status).toBe('loading');
+      expect(sync.getMediaDuration()).toBe(180);
+      expect(listener).not.toHaveBeenCalled();
+      expect(durations).toEqual([]);
+      b.player().emitReady(120);
+      expect(sync.getMediaDuration()).toBe(120);
+      expect(durations).toEqual([120]);
+    });
+
+    it('drops the duration at once when a file is removed', () => {
+      const { sync, track } = attachedReady(180);
+      track.controller.clear();
+      expect(sync.getMediaDuration()).toBe(0);
+    });
+
+    it('does not grow from nothing while the first file loads', () => {
+      const { sync } = setup();
+      const track = makeController();
+      sync.attach(track.controller);
+      track.load();
+      expect(sync.getMediaDuration()).toBe(0);
+      track.player().emitReady(30);
+      expect(sync.getMediaDuration()).toBe(30);
     });
   });
 });

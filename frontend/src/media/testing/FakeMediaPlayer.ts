@@ -7,6 +7,8 @@ export class FakeMediaPlayer implements MediaPlayer {
   muted = false;
   destroyed = false;
   playError: Error | null = null;
+  /** Returned by getMediaElement(); the call is not logged. */
+  mediaElement: HTMLMediaElement | null = null;
   readonly calls: string[] = [];
 
   constructor(readonly options: CreateMediaPlayerOptions) {}
@@ -40,6 +42,10 @@ export class FakeMediaPlayer implements MediaPlayer {
   setMuted(muted: boolean): void {
     this.calls.push(`setMuted:${muted}`);
     this.muted = muted;
+  }
+
+  getMediaElement(): HTMLMediaElement | null {
+    return this.mediaElement;
   }
 
   destroy(): void {

@@ -1,6 +1,6 @@
 import WaveSurfer from 'wavesurfer.js';
 import type { WaveformPlayerEvents } from './waveformPlayer.ts';
-import { createWaveSurferPlayer } from './waveSurferPlayer.ts';
+import { createWaveSurferPlayer, createWaveSurferView } from './waveSurferPlayer.ts';
 
 type Handler = (...args: unknown[]) => void;
 
@@ -14,6 +14,7 @@ interface FakeWaveSurfer {
   getCurrentTime: ReturnType<typeof vi.fn>;
   setPlaybackRate: ReturnType<typeof vi.fn>;
   setMuted: ReturnType<typeof vi.fn>;
+  getMediaElement: ReturnType<typeof vi.fn>;
   destroy: ReturnType<typeof vi.fn>;
   emit(event: string, ...args: unknown[]): void;
 }
@@ -41,6 +42,7 @@ vi.mock('wavesurfer.js', () => {
       getCurrentTime: vi.fn(() => 4.25),
       setPlaybackRate: vi.fn(),
       setMuted: vi.fn(),
+      getMediaElement: vi.fn(() => null),
       destroy: vi.fn(),
       emit(event, ...args) {
         handlers.get(event)?.(...args);
@@ -144,9 +146,68 @@ describe('createWaveSurferPlayer', () => {
     expect(ws.destroy).toHaveBeenCalled();
   });
 
+  it('exposes the media element of WaveSurfer', () => {
+    const { player, ws } = setup();
+    const audio = document.createElement('audio');
+    ws.getMediaElement.mockReturnValue(audio);
+    expect(player.getMediaElement()).toBe(audio);
+  });
+
   it('mutes the media element', () => {
     const { player, ws } = setup();
     player.setMuted(true);
     expect(ws.setMuted).toHaveBeenCalledWith(true);
+  });
+});
+
+describe('createWaveSurferView', () => {
+  beforeEach(() => {
+    mocks.instances.length = 0;
+    mocks.loadResult = null;
+    vi.mocked(WaveSurfer.create).mockClear();
+  });
+
+  function setupView() {
+    const container = document.createElement('div');
+    const media = document.createElement('video');
+    const callbacks = { onReady: vi.fn(), onSeek: vi.fn(), onError: vi.fn() };
+    const view = createWaveSurferView({ container, media, url: 'blob:v', events: callbacks });
+    const ws = mocks.instances[mocks.instances.length - 1];
+    if (ws === undefined) throw new Error('WaveSurfer was not created');
+    return { container, media, callbacks, view, ws };
+  }
+
+  it('draws the sound of the given media element without loading it again', () => {
+    const { container, media, ws } = setupView();
+    expect(WaveSurfer.create).toHaveBeenCalledTimes(1);
+    const options = vi.mocked(WaveSurfer.create).mock.calls[0]?.[0];
+    expect(options).toMatchObject({
+      container,
+      media,
+      url: 'blob:v',
+      height: 96,
+      interact: true,
+      dragToSeek: false,
+      normalize: true,
+    });
+    expect(options).not.toHaveProperty('backend');
+    expect(ws.load).not.toHaveBeenCalled();
+  });
+
+  it('forwards the view events', () => {
+    const { callbacks, ws } = setupView();
+    ws.emit('ready', 12);
+    expect(callbacks.onReady).toHaveBeenCalled();
+    ws.emit('interaction', 3.5);
+    expect(callbacks.onSeek).toHaveBeenCalledWith(3.5);
+    const error = new Error('no audio');
+    ws.emit('error', error);
+    expect(callbacks.onError).toHaveBeenCalledWith(error);
+  });
+
+  it('destroys WaveSurfer', () => {
+    const { view, ws } = setupView();
+    view.destroy();
+    expect(ws.destroy).toHaveBeenCalled();
   });
 });

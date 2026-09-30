@@ -3,20 +3,33 @@ import {
   createFakeWaveformPlayers,
   type FakeWaveformPlayer,
 } from '../audio/testing/FakeWaveformPlayer.ts';
+import { createFakeWaveformViews } from '../audio/testing/FakeWaveformView.ts';
+import { createFakeMediaPlayers } from '../media/testing/FakeMediaPlayer.ts';
 import AudioTrackProvider from '../state/AudioTrackProvider.tsx';
+import VideoProvider from '../state/VideoProvider.tsx';
 import { AUDIO_FILE_ACCEPT } from '../utils/audioFormats.ts';
 import AudioTrack from './AudioTrack.tsx';
 import { stubAnimationFrames } from './testing/animationFrames.ts';
 
-vi.mock('../audio/waveSurferPlayer.ts', () => ({ createWaveSurferPlayer: vi.fn() }));
+vi.mock('../media/htmlVideoPlayer.ts', () => ({ createHtmlVideoPlayer: vi.fn() }));
+vi.mock('../audio/waveSurferPlayer.ts', () => ({
+  createWaveSurferPlayer: vi.fn(),
+  createWaveSurferView: vi.fn(),
+}));
 
 const file = (name: string, type: string) => new File(['x'], name, { type });
 
 function setup() {
   const fake = createFakeWaveformPlayers();
   render(
-    <AudioTrackProvider createPlayer={fake.create} canPlayType={() => true}>
-      <AudioTrack />
+    <AudioTrackProvider
+      createPlayer={fake.create}
+      canPlayType={() => true}
+      createWaveformView={createFakeWaveformViews().create}
+    >
+      <VideoProvider createPlayer={createFakeMediaPlayers().create} canPlayType={() => true}>
+        <AudioTrack />
+      </VideoProvider>
     </AudioTrackProvider>,
   );
   const player = (index = 0): FakeWaveformPlayer => {

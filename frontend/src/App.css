@@ -295,6 +295,12 @@ body {
   background: var(--bg);
 }
 
+.audio-track__video-waveform {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+}
+
 .audio-track__overlay {
   position: absolute;
   inset: 0;

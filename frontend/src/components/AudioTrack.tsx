@@ -1,18 +1,29 @@
 import { useRef } from 'react';
 import { useAudioTrackApi, useAudioTrackState } from '../state/audioTrackContext.ts';
+import { useVideoApi, useVideoState } from '../state/videoContext.ts';
 import { AUDIO_FILE_ACCEPT } from '../utils/audioFormats.ts';
 import { formatMediaPosition } from '../utils/transportFormat.ts';
 import FileLoadButton from './FileLoadButton.tsx';
 import { useFileDrop } from './useFileDrop.ts';
 import { useLivePosition } from './useLivePosition.ts';
+import VideoSoundWaveform from './VideoSoundWaveform.tsx';
 
 /**
  * Audio file loading, waveform and position of the audio track. Playback and speed follow the
- * transport; a click on the waveform seeks the whole timeline.
+ * transport; a click on the waveform seeks the whole timeline. While a video is loaded instead of
+ * an audio file (only one media file is loaded at a time), the track shows the video's sound.
  */
 export default function AudioTrack() {
-  const { status, fileName, duration, playing, position, error } = useAudioTrackState();
+  const audio = useAudioTrackState();
+  const video = useVideoState();
   const api = useAudioTrackApi();
+  const videoApi = useVideoApi();
+  const { status, fileName, error } = audio;
+  const showsVideo = status === 'empty' && video.status !== 'empty';
+  // The position follows the media shown on the track.
+  const shown = showsVideo ? video : audio;
+  const getShownTime = showsVideo ? videoApi.getCurrentTime : api.getCurrentTime;
+  const { duration } = shown;
   const waveformRef = useRef<HTMLDivElement>(null);
   const positionRef = useRef<HTMLOutputElement>(null);
 
@@ -31,7 +42,7 @@ export default function AudioTrack() {
     output.textContent = formatMediaPosition(seconds, duration);
   };
 
-  useLivePosition(playing, position, api.getCurrentTime, showPosition);
+  useLivePosition(shown.playing, shown.position, getShownTime, showPosition);
 
   return (
     <div className="audio-track" onDragOver={onDragOver} onDrop={onDrop}>
@@ -47,6 +58,11 @@ export default function AudioTrack() {
             {fileName}
           </span>
         )}
+        {showsVideo && video.fileName !== null && (
+          <span className="audio-track__name" title={video.fileName}>
+            Video sound: {video.fileName}
+          </span>
+        )}
         <button
           type="button"
           aria-label="Remove audio"
@@ -58,7 +74,13 @@ export default function AudioTrack() {
       </div>
       <div className="audio-track__stage">
         <div ref={waveformRef} className="audio-track__waveform" data-testid="waveform" />
-        {status === 'empty' && (
+        {showsVideo && video.status === 'loading' && (
+          <p className="audio-track__status audio-track__overlay">
+            Loading the sound of {video.fileName}…
+          </p>
+        )}
+        {showsVideo && video.status === 'ready' && <VideoSoundWaveform />}
+        {status === 'empty' && !showsVideo && (
           <p className="placeholder audio-track__overlay">
             Drop an audio file here or use &quot;Load audio…&quot; (MP3, WAV, OGG, AAC, M4A)
           </p>

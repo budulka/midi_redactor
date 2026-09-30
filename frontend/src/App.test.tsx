@@ -5,7 +5,10 @@ import { createWaveSurferPlayer } from './audio/waveSurferPlayer.ts';
 import { createHtmlVideoPlayer } from './media/htmlVideoPlayer.ts';
 
 vi.mock('./audio/loadEngine.ts', () => ({ loadPianoEngine: vi.fn() }));
-vi.mock('./audio/waveSurferPlayer.ts', () => ({ createWaveSurferPlayer: vi.fn() }));
+vi.mock('./audio/waveSurferPlayer.ts', () => ({
+  createWaveSurferPlayer: vi.fn(),
+  createWaveSurferView: vi.fn(),
+}));
 vi.mock('./media/htmlVideoPlayer.ts', () => ({ createHtmlVideoPlayer: vi.fn() }));
 
 describe('App', () => {

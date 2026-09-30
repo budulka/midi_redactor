@@ -1,7 +1,7 @@
 import type { MediaFormat } from '../utils/mediaFormats.ts';
 import { detectFormat } from '../utils/mediaFormats.ts';
 import { EMPTY_MEDIA_TRACK_SNAPSHOT, MediaTrackController } from './MediaTrackController.ts';
-import { createFakeMediaPlayers, type FakeMediaPlayer } from './testing/FakeMediaPlayer.ts';
+import { createFakeMediaPlayers, FakeMediaPlayer } from './testing/FakeMediaPlayer.ts';
 
 const X: MediaFormat = {
   id: 'x',
@@ -254,6 +254,145 @@ describe('MediaTrackController', () => {
     it('does not mute a new player without the setting', () => {
       const { player } = ready();
       expect(player().calls.some((call) => call.startsWith('setMuted'))).toBe(false);
+    });
+  });
+
+  describe('load start', () => {
+    /** Like setup(), but the player factory and destroy() write to a shared event log. */
+    function setupWithLog() {
+      const log: string[] = [];
+      const players: FakeMediaPlayer[] = [];
+      const revokeObjectUrl = vi.fn((url: string) => log.push(`revoke ${url}`));
+      let urls = 0;
+      const controller = new MediaTrackController<MediaFormat>({
+        createPlayer: (options) => {
+          const name = options.url;
+          log.push(`create ${name}`);
+          const created = new FakeMediaPlayer(options);
+          const destroy = created.destroy.bind(created);
+          created.destroy = () => {
+            log.push(`destroy ${name}`);
+            destroy();
+          };
+          players.push(created);
+          return created;
+        },
+        canPlayType: () => true,
+        detectFormat: (f) => detectFormat([X], f),
+        messages: {
+          unsupported: (name) => `bad ${name}`,
+          unplayable: (format) => `cannot ${format.label}`,
+          loadFailed: (name) => `broken ${name}`,
+          playFailed: 'no play',
+        },
+        createObjectUrl: () => {
+          urls += 1;
+          return `blob:${urls}`;
+        },
+        revokeObjectUrl,
+      });
+      const container = document.createElement('div');
+      const player = (index = 0): FakeMediaPlayer => {
+        const found = players[index];
+        if (found === undefined) throw new Error(`no player ${index}`);
+        return found;
+      };
+      return { controller, container, log, player, revokeObjectUrl };
+    }
+
+    it('calls the listener once, before the player is created', () => {
+      const { controller, container, log } = setupWithLog();
+      const seen: string[] = [];
+      controller.subscribe(() => log.push('snapshot'));
+      controller.subscribeLoadStart(() => {
+        log.push('loadStart');
+        const { status, fileName } = controller.getSnapshot();
+        seen.push(`${status}:${fileName}:${controller.getCurrentTime()}`);
+      });
+      controller.load(file('a.x', 'app/x'), container);
+      expect(log).toEqual(['loadStart', 'create blob:1', 'snapshot']);
+      expect(seen).toEqual(['loading:a.x:0']);
+    });
+
+    it('releases the previous file of the track before the listener runs', () => {
+      const { controller, container, log, player } = setupWithLog();
+      controller.subscribeLoadStart(() => log.push('loadStart'));
+      controller.load(file('a.x', 'app/x'), container);
+      player().emitReady(10);
+      controller.load(file('b.x', 'app/x'), container);
+      expect(log).toEqual([
+        'loadStart',
+        'create blob:1',
+        'destroy blob:1',
+        'revoke blob:1',
+        'loadStart',
+        'create blob:2',
+      ]);
+    });
+
+    it('notifies snapshot listeners once per load', () => {
+      const { controller, container } = setupWithLog();
+      const listener = vi.fn();
+      controller.subscribe(listener);
+      controller.subscribeLoadStart(() => undefined);
+      controller.load(file('a.x', 'app/x'), container);
+      expect(listener).toHaveBeenCalledTimes(1);
+      controller.load(file('b.x', 'app/x'), container);
+      expect(listener).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not call the listener for rejected files', () => {
+      const { controller, container } = setupWithLog();
+      const listener = vi.fn();
+      controller.subscribeLoadStart(listener);
+      controller.load(file('a.txt', 'text/plain'), container);
+      expect(listener).not.toHaveBeenCalled();
+
+      const refusing = setup(false);
+      const refused = vi.fn();
+      refusing.controller.subscribeLoadStart(refused);
+      refusing.controller.load(file('a.x', 'app/x'), refusing.container);
+      expect(refused).not.toHaveBeenCalled();
+      expect(refusing.players).toHaveLength(0);
+    });
+
+    it('stops calling the listener after unsubscribing', () => {
+      const { controller, container } = setupWithLog();
+      const listener = vi.fn();
+      const unsubscribe = controller.subscribeLoadStart(listener);
+      unsubscribe();
+      controller.load(file('a.x', 'app/x'), container);
+      expect(listener).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getLoadedMedia', () => {
+    it('returns the element and URL only while ready', () => {
+      const { controller, container, player } = setup();
+      const video = document.createElement('video');
+      expect(controller.getLoadedMedia()).toBeNull();
+      controller.load(file('a.x', 'app/x'), container);
+      player().mediaElement = video;
+      expect(controller.getLoadedMedia()).toBeNull();
+      player().emitReady(10);
+      expect(controller.getLoadedMedia()).toEqual({ element: video, url: 'blob:1' });
+      controller.clear();
+      expect(controller.getLoadedMedia()).toBeNull();
+    });
+
+    it('returns null for a player without an element', () => {
+      const { controller, container, player } = setup();
+      controller.load(file('a.x', 'app/x'), container);
+      player().emitReady(10);
+      expect(controller.getLoadedMedia()).toBeNull();
+    });
+
+    it('returns null after a load error', () => {
+      const { controller, container, player } = setup();
+      controller.load(file('a.x', 'app/x'), container);
+      player().mediaElement = document.createElement('video');
+      player().emitError();
+      expect(controller.getLoadedMedia()).toBeNull();
     });
   });
 });

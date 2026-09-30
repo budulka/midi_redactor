@@ -13,7 +13,10 @@ import TransportProvider from './TransportProvider.tsx';
 import VideoProvider from './VideoProvider.tsx';
 
 vi.mock('../media/htmlVideoPlayer.ts', () => ({ createHtmlVideoPlayer: vi.fn() }));
-vi.mock('../audio/waveSurferPlayer.ts', () => ({ createWaveSurferPlayer: vi.fn() }));
+vi.mock('../audio/waveSurferPlayer.ts', () => ({
+  createWaveSurferPlayer: vi.fn(),
+  createWaveSurferView: vi.fn(),
+}));
 
 function setup() {
   const audioPlayers = createFakeMediaPlayers();
