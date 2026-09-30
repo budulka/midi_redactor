@@ -246,12 +246,20 @@ export class MediaSync {
     }
   }
 
+  /**
+   * Longest duration of the ready tracks. While a track is loading a file, the duration does not
+   * shrink: a replaced file keeps the timeline (and the playing transport) where it was until the
+   * new file is ready or fails.
+   */
   private updateMediaDuration(): void {
-    let duration = 0;
+    let ready = 0;
+    let loading = false;
     for (const { track } of this.entries) {
       const snapshot = track.getSnapshot();
-      if (snapshot.status === 'ready') duration = Math.max(duration, snapshot.duration);
+      if (snapshot.status === 'ready') ready = Math.max(ready, snapshot.duration);
+      if (snapshot.status === 'loading') loading = true;
     }
+    const duration = loading ? Math.max(ready, this.mediaDuration) : ready;
     if (duration === this.mediaDuration) return;
     this.mediaDuration = duration;
     for (const listener of [...this.listeners]) listener();

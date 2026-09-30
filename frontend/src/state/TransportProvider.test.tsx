@@ -363,6 +363,39 @@ describe('TransportProvider media synchronization', () => {
     expect(player.calls).toEqual(['pause', 'setTime:0']);
   });
 
+  it('keeps playing while the media file is replaced', async () => {
+    const { controller, engine, loadReady, play } = setupMedia();
+    click('attach');
+    loadReady(180);
+    await play();
+    engine.time = 90.05;
+    act(() => engine.tick());
+    expect(readState().status).toBe('playing');
+    const before = readState().position;
+    act(() => controller.load(new File(['b'], 'b.mp3'), document.createElement('div')));
+    engine.time = 90.5;
+    act(() => engine.tick());
+    expect(readState().status).toBe('playing');
+    expect(screen.getByRole('status', { name: 'media duration' }).textContent).toBe('180');
+    expect(readState().position).toBeGreaterThanOrEqual(before);
+  });
+
+  it('pauses at the end when the new file is shorter', async () => {
+    const { engine, loadReady, play } = setupMedia();
+    click('attach');
+    loadReady(180);
+    await play();
+    engine.time = 90.05;
+    act(() => engine.tick());
+    expect(readState().status).toBe('playing');
+    // Replaces the file with a 30 s one; the timeline shrinks to its 60 s minimum.
+    loadReady(30);
+    expect(screen.getByRole('status', { name: 'media duration' }).textContent).toBe('30');
+    engine.time = 91;
+    act(() => engine.tick());
+    expect(readState().status).toBe('paused');
+  });
+
   it('has no media duration outside the provider', () => {
     function Orphan() {
       return <output aria-label="orphan">{useMediaDuration()}</output>;

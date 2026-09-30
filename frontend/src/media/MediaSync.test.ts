@@ -455,4 +455,58 @@ describe('MediaSync', () => {
       expect(setTimes(player())).toHaveLength(1);
     });
   });
+
+  describe('media duration while a file is replaced', () => {
+    function attachedReady(duration: number) {
+      const context = setup();
+      const listener = vi.fn();
+      context.sync.subscribe(listener);
+      const track = context.readyTrack(duration);
+      context.sync.attach(track.controller);
+      listener.mockClear();
+      return { ...context, listener, track };
+    }
+
+    it('keeps the duration while the same track loads another file', () => {
+      const { sync, listener, track } = attachedReady(180);
+      expect(sync.getMediaDuration()).toBe(180);
+      track.load();
+      expect(track.controller.getSnapshot().status).toBe('loading');
+      expect(sync.getMediaDuration()).toBe(180);
+      expect(listener).not.toHaveBeenCalled();
+      track.player().emitReady(120);
+      expect(sync.getMediaDuration()).toBe(120);
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('drops the duration when the new file fails', () => {
+      const { sync, track } = attachedReady(180);
+      track.load();
+      track.player().emitError();
+      expect(sync.getMediaDuration()).toBe(0);
+    });
+
+    it('grows with a longer new file', () => {
+      const { sync, track } = attachedReady(60);
+      track.load();
+      track.player().emitReady(200);
+      expect(sync.getMediaDuration()).toBe(200);
+    });
+
+    it('drops the duration at once when a file is removed', () => {
+      const { sync, track } = attachedReady(180);
+      track.controller.clear();
+      expect(sync.getMediaDuration()).toBe(0);
+    });
+
+    it('does not grow from nothing while the first file loads', () => {
+      const { sync } = setup();
+      const track = makeController();
+      sync.attach(track.controller);
+      track.load();
+      expect(sync.getMediaDuration()).toBe(0);
+      track.player().emitReady(30);
+      expect(sync.getMediaDuration()).toBe(30);
+    });
+  });
 });
