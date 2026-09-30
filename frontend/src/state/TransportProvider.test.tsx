@@ -2,7 +2,8 @@ import { act, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type { PianoEngine } from '../audio/engine.ts';
 import { FakePianoEngine } from '../audio/testing/FakePianoEngine.ts';
-import { addNotes, setBpm } from './actions.ts';
+import { addNotes, setBpm, setMediaOffset } from './actions.ts';
+import { createEmptyProject } from './constants.ts';
 import EditorProvider from './EditorProvider.tsx';
 import ProjectProvider from './ProjectProvider.tsx';
 import { useProjectDispatch } from './projectContext.ts';
@@ -328,6 +329,7 @@ describe('TransportProvider media synchronization', () => {
     const state = useTransportState();
     const api = useTransportApi();
     const mediaDuration = useMediaDuration();
+    const dispatch = useProjectDispatch();
     return (
       <>
         <pre data-testid="transport">{JSON.stringify(state)}</pre>
@@ -341,11 +343,17 @@ describe('TransportProvider media synchronization', () => {
         <button type="button" onClick={() => api.attachMedia(controller)}>
           attach
         </button>
+        <button type="button" onClick={() => dispatch(setMediaOffset(2))}>
+          offset2
+        </button>
+        <button type="button" onClick={() => api.applyMediaOffset(3, 0)}>
+          apply3
+        </button>
       </>
     );
   }
 
-  function setupMedia() {
+  function setupMedia(initialProject?: Project) {
     const fake = createFakeMediaPlayers();
     const controller = new AudioTrackController({
       createPlayer: fake.create,
@@ -355,7 +363,7 @@ describe('TransportProvider media synchronization', () => {
     });
     const engine = new FakePianoEngine();
     const view = render(
-      <ProjectProvider>
+      <ProjectProvider initialProject={initialProject}>
         <EditorProvider>
           <TransportProvider loadEngine={() => Promise.resolve(engine)}>
             <MediaProbe controller={controller} />
@@ -460,5 +468,36 @@ describe('TransportProvider media synchronization', () => {
     }
     render(<Orphan />);
     expect(screen.getByRole('status', { name: 'orphan' }).textContent).toBe('0');
+  });
+
+  it('applies the project media offset to the media', () => {
+    const { loadReady } = setupMedia();
+    click('attach');
+    const player = loadReady(30);
+    click('offset2');
+    expect(player.calls).toContain('setTime:2');
+    expect(screen.getByRole('status', { name: 'media duration' }).textContent).toBe('28');
+  });
+
+  it('applies an offset and a seek in one pass', () => {
+    const { loadReady } = setupMedia();
+    click('attach');
+    const player = loadReady(30);
+    click('offset2');
+    player.calls.length = 0;
+    click('apply3');
+    expect(player.calls.filter((call) => call.startsWith('setTime:'))).toEqual(['setTime:3']);
+    expect(readState().position).toBe(0);
+  });
+
+  it('extends the timeline for a negative offset', async () => {
+    const { engine, loadReady, play } = setupMedia({ ...createEmptyProject(), mediaOffset: -40 });
+    click('attach');
+    loadReady(30);
+    expect(screen.getByRole('status', { name: 'media duration' }).textContent).toBe('70');
+    await play();
+    engine.time = 64.06;
+    act(() => engine.tick());
+    expect(readState().status).toBe('playing');
   });
 });
