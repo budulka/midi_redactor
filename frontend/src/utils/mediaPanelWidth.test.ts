@@ -170,7 +170,9 @@ describe('browserStorage', () => {
   });
 
   it('returns localStorage', () => {
-    expect(browserStorage()).toBe(window.localStorage);
+    const storage = browserStorage();
+    expect(storage).toBeInstanceOf(Storage);
+    expect(storage).toBe(window.localStorage);
   });
 
   it('returns null when the browser refuses access', () => {

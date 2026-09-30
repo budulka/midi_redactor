@@ -1,3 +1,4 @@
+import AppLayout from './components/AppLayout.tsx';
 import AudioTrack from './components/AudioTrack.tsx';
 import BackendStatus from './components/BackendStatus.tsx';
 import ExportButton from './components/ExportButton.tsx';
@@ -28,28 +29,30 @@ export default function App() {
               <SingleMediaSource />
               <SelectionSync />
               <KeyboardShortcuts />
-              <div className="app">
-                <header className="app__transport" aria-label="Transport">
-                  <h1 className="app__title">MIDI Redactor</h1>
-                  <TempoControls />
-                  <TransportControls />
-                  <ProjectInfo />
-                  <ImportButton />
-                  <ExportButton />
-                  <BackendStatus />
-                </header>
-                <main className="app__editor" aria-label="MIDI editor">
-                  <PianoRoll />
-                </main>
-                <aside className="app__media" aria-label="Media">
-                  <section className="app__video" aria-label="Video">
-                    <VideoPlayer />
-                  </section>
-                  <section className="app__audio" aria-label="Audio track">
-                    <AudioTrack />
-                  </section>
-                </aside>
-              </div>
+              <AppLayout
+                header={
+                  <>
+                    <h1 className="app__title">MIDI Redactor</h1>
+                    <TempoControls />
+                    <TransportControls />
+                    <ProjectInfo />
+                    <ImportButton />
+                    <ExportButton />
+                    <BackendStatus />
+                  </>
+                }
+                editor={<PianoRoll />}
+                media={
+                  <>
+                    <section className="app__video" aria-label="Video">
+                      <VideoPlayer />
+                    </section>
+                    <section className="app__audio" aria-label="Audio track">
+                      <AudioTrack />
+                    </section>
+                  </>
+                }
+              />
             </VideoProvider>
           </AudioTrackProvider>
         </TransportProvider>

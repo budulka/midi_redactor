@@ -137,4 +137,15 @@ describe('App', () => {
     const urls = vi.mocked(fetch).mock.calls.map(([url]) => url);
     expect(urls.every((url) => url === '/api/health')).toBe(true);
   });
+
+  it('has a splitter that controls the media panel', async () => {
+    window.localStorage.clear();
+    render(<App />);
+    const media = screen.getByRole('complementary', { name: 'Media' });
+    const splitter = screen.getByRole('separator', { name: 'Resize media panel' });
+    expect(media.id).not.toBe('');
+    expect(splitter).toHaveAttribute('aria-controls', media.id);
+    expect(splitter).toHaveAttribute('aria-valuenow', '360');
+    expect(await screen.findByText('backend: online')).toBeInTheDocument();
+  });
 });
