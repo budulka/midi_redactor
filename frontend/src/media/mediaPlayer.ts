@@ -20,6 +20,8 @@ export interface MediaPlayer {
   /** Always preserves pitch. */
   setPlaybackRate(rate: number): void;
   setMuted(muted: boolean): void;
+  /** The media element that plays the file, if the player has one. */
+  getMediaElement(): HTMLMediaElement | null;
   destroy(): void;
 }
 

@@ -55,6 +55,11 @@ describe('createHtmlVideoPlayer', () => {
     expect(video).toHaveClass('video-player__video');
   });
 
+  it('exposes its video element', () => {
+    const { container, player } = setup();
+    expect(player.getMediaElement()).toBe(container.querySelector('video'));
+  });
+
   it('reports ready once with the duration', () => {
     const { events, fire, makeReady } = setup();
     makeReady(12);

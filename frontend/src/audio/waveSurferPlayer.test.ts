@@ -14,6 +14,7 @@ interface FakeWaveSurfer {
   getCurrentTime: ReturnType<typeof vi.fn>;
   setPlaybackRate: ReturnType<typeof vi.fn>;
   setMuted: ReturnType<typeof vi.fn>;
+  getMediaElement: ReturnType<typeof vi.fn>;
   destroy: ReturnType<typeof vi.fn>;
   emit(event: string, ...args: unknown[]): void;
 }
@@ -41,6 +42,7 @@ vi.mock('wavesurfer.js', () => {
       getCurrentTime: vi.fn(() => 4.25),
       setPlaybackRate: vi.fn(),
       setMuted: vi.fn(),
+      getMediaElement: vi.fn(() => null),
       destroy: vi.fn(),
       emit(event, ...args) {
         handlers.get(event)?.(...args);
@@ -142,6 +144,13 @@ describe('createWaveSurferPlayer', () => {
     expect(ws.pause).toHaveBeenCalled();
     player.destroy();
     expect(ws.destroy).toHaveBeenCalled();
+  });
+
+  it('exposes the media element of WaveSurfer', () => {
+    const { player, ws } = setup();
+    const audio = document.createElement('audio');
+    ws.getMediaElement.mockReturnValue(audio);
+    expect(player.getMediaElement()).toBe(audio);
   });
 
   it('mutes the media element', () => {

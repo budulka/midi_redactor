@@ -45,6 +45,12 @@ export interface MediaTrackControllerOptions<F extends MediaFormat> {
   readonly revokeObjectUrl?: (url: string) => void;
 }
 
+/** A ready file: its media element and the object URL it plays. */
+export interface LoadedMedia {
+  readonly element: HTMLMediaElement;
+  readonly url: string;
+}
+
 export const EMPTY_MEDIA_TRACK_SNAPSHOT: MediaTrackSnapshot = {
   status: 'empty',
   fileName: null,
@@ -75,6 +81,7 @@ export class MediaTrackController<F extends MediaFormat = MediaFormat> {
   private nudge = 1;
   private readonly listeners = new Set<() => void>();
   private readonly seekListeners = new Set<(seconds: number) => void>();
+  private readonly loadStartListeners = new Set<() => void>();
 
   constructor(options: MediaTrackControllerOptions<F>) {
     this.createPlayer = options.createPlayer;
@@ -101,6 +108,8 @@ export class MediaTrackController<F extends MediaFormat = MediaFormat> {
     const url = this.createObjectUrl(file);
     this.url = url;
     this.nudge = 1;
+    // The snapshot is already 'loading' (without a notification) when load start listeners run,
+    // so whoever reacts to them sees that a new file is on its way.
     this.snapshot = {
       status: 'loading',
       fileName: file.name,
@@ -111,6 +120,7 @@ export class MediaTrackController<F extends MediaFormat = MediaFormat> {
       muted: this.snapshot.muted,
       error: null,
     };
+    for (const listener of [...this.loadStartListeners]) listener();
     this.player = this.createPlayer({
       container,
       url,
@@ -217,6 +227,26 @@ export class MediaTrackController<F extends MediaFormat = MediaFormat> {
     return () => {
       this.seekListeners.delete(listener);
     };
+  }
+
+  /**
+   * Calls the listener when a file passed the format checks and is about to replace the current
+   * one, before the new player is created. Rejected files do not call it. While the listener runs,
+   * the previous file of this track is already released, getSnapshot() already reports 'loading'
+   * with the new file name, and there is no player yet (getCurrentTime() returns 0).
+   */
+  subscribeLoadStart(listener: () => void): () => void {
+    this.loadStartListeners.add(listener);
+    return () => {
+      this.loadStartListeners.delete(listener);
+    };
+  }
+
+  /** The media element and URL of the ready file; null while empty, loading or without an element. */
+  getLoadedMedia(): LoadedMedia | null {
+    if (this.snapshot.status !== 'ready' || this.player === null || this.url === null) return null;
+    const element = this.player.getMediaElement();
+    return element === null ? null : { element, url: this.url };
   }
 
   setRate(rate: number): void {
