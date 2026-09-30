@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type { PianoEngine } from '../audio/engine.ts';
 import { FakePianoEngine } from '../audio/testing/FakePianoEngine.ts';
-import { addNotes } from './actions.ts';
+import { addNotes, setBpm } from './actions.ts';
 import EditorProvider from './EditorProvider.tsx';
 import ProjectProvider from './ProjectProvider.tsx';
 import { useProjectDispatch } from './projectContext.ts';
@@ -63,6 +63,9 @@ function Probe() {
         }
       >
         add
+      </button>
+      <button type="button" onClick={() => dispatch(setBpm(60))}>
+        tempo60
       </button>
     </>
   );
@@ -222,6 +225,60 @@ describe('TransportProvider', () => {
       velocity: 80,
       time: 0.55,
     });
+  });
+
+  it('plays notes at the rescaled time after a tempo change', async () => {
+    const c: Note = { id: 'c', pitch: 67, start: 1, duration: 0.5, velocity: 70 };
+    const { loads } = setup([a, c]);
+    click('tempo60');
+    click('toggle');
+    const engine = new FakePianoEngine();
+    await resolveWith(loads[0], engine);
+    expect(engine.calls).toContainEqual({
+      op: 'attack',
+      channel: 'playback',
+      pitch: 60,
+      velocity: 100,
+      time: 0.05,
+    });
+
+    engine.time = 1.0;
+    act(() => engine.tick());
+    expect(engine.calls).not.toContainEqual(expect.objectContaining({ op: 'attack', pitch: 67 }));
+
+    engine.time = 1.9;
+    act(() => engine.tick());
+    expect(engine.calls).toContainEqual({
+      op: 'attack',
+      channel: 'playback',
+      pitch: 67,
+      velocity: 70,
+      time: 2.05,
+    });
+  });
+
+  it('applies a tempo change during playback', async () => {
+    const c: Note = { id: 'c', pitch: 67, start: 1, duration: 0.5, velocity: 70 };
+    const { loads } = setup([a, c]);
+    click('toggle');
+    const engine = new FakePianoEngine();
+    await resolveWith(loads[0], engine);
+    engine.time = 0.3;
+    act(() => engine.tick());
+
+    click('tempo60');
+    engine.time = 1.9;
+    act(() => engine.tick());
+    expect(engine.calls).toContainEqual({
+      op: 'attack',
+      channel: 'playback',
+      pitch: 67,
+      velocity: 70,
+      time: 2.05,
+    });
+    expect(engine.calls).not.toContainEqual(
+      expect.objectContaining({ op: 'attack', pitch: 67, time: 1.05 }),
+    );
   });
 
   it('silences and disposes the engine on unmount', async () => {
