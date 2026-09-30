@@ -24,6 +24,7 @@ function project(overrides: Partial<Project> = {}): Project {
   return {
     bpm: 120,
     timeSignature: { numerator: 4, denominator: 4 },
+    mediaOffset: 0,
     notes: [],
     pedals: [],
     ...overrides,

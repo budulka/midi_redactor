@@ -12,6 +12,7 @@ import type { Project } from './types.ts';
 const project: Project = {
   bpm: 120,
   timeSignature: { numerator: 4, denominator: 4 },
+  mediaOffset: 0,
   notes: [
     { id: 'a', pitch: 60, start: 0, duration: 0.5, velocity: 100 },
     { id: 'b', pitch: 64, start: 1, duration: 0.5, velocity: 100 },

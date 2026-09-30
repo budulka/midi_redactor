@@ -81,6 +81,7 @@ function setup(notes: readonly Note[] = [a]) {
   const project: Project = {
     bpm: 120,
     timeSignature: { numerator: 4, denominator: 4 },
+    mediaOffset: 0,
     notes,
     pedals: [],
   };

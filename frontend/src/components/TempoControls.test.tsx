@@ -70,6 +70,7 @@ describe('TempoControls', () => {
     const { tempo, numerator, denominator } = renderControls({
       bpm: 90,
       timeSignature: { numerator: 6, denominator: 8 },
+      mediaOffset: 0,
       notes: [],
       pedals: [],
     });
@@ -101,6 +102,7 @@ describe('TempoControls', () => {
         initialProject={{
           bpm: 120,
           timeSignature: { numerator: 4, denominator: 4 },
+          mediaOffset: 0,
           notes: [{ id: 'a', pitch: 60, start: 1, duration: 0.5, velocity: 100 }],
           pedals: [{ id: 'p', type: 'sustain', start: 1, end: 2 }],
         }}

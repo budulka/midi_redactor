@@ -37,6 +37,7 @@ function makeState(overrides: Partial<Project> = {}): Project {
   return deepFreeze({
     bpm: 120,
     timeSignature: { numerator: 4, denominator: 4 },
+    mediaOffset: 0,
     notes: [n1, n2, n3],
     pedals: [sustain, soft],
     ...overrides,

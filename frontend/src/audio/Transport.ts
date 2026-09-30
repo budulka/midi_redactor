@@ -15,6 +15,7 @@ export const TICK_INTERVAL_SECONDS = 0.025;
 const EMPTY_PROJECT: Project = {
   bpm: 120,
   timeSignature: { numerator: 4, denominator: 4 },
+  mediaOffset: 0,
   notes: [],
   pedals: [],
 };

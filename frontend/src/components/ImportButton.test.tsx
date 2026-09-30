@@ -62,6 +62,7 @@ const existing: Note = { id: 'n1', pitch: 40, start: 0, duration: 1, velocity: 6
 const imported: Project = {
   bpm: 90,
   timeSignature: { numerator: 3, denominator: 4 },
+  mediaOffset: 0,
   notes: [
     { id: 'n1', pitch: 60, start: 0, duration: 0.5, velocity: 100 },
     { id: 'n2', pitch: 64, start: 0.5, duration: 0.5, velocity: 80 },
