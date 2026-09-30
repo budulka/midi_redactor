@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { dragBetween } from './helpers.ts';
 
 export interface TestVideoOptions {
   readonly width: number;
@@ -260,4 +261,31 @@ export async function objectUrlOf(page: Page, name: string): Promise<string> {
   const entry = created.find((item) => item.name === name);
   if (entry === undefined) throw new Error(`no object URL for ${name}`);
   return entry.url;
+}
+
+/** The splitter between the piano roll and the media panel. */
+export function splitter(page: Page): Locator {
+  return page.getByRole('separator', { name: 'Resize media panel' });
+}
+
+/** The width of the media panel in CSS pixels. */
+export async function mediaPanelWidth(page: Page): Promise<number> {
+  return (await boxOf(page.locator('aside[aria-label="Media"]'))).width;
+}
+
+/** Drags the splitter from its centre by dx pixels (negative: to the left, widening the panel). */
+export async function dragSplitterBy(page: Page, dx: number): Promise<void> {
+  await dragSplitterTo(page, (x) => x + dx);
+}
+
+/** Drags the splitter from its centre to the x that `target` returns for the centre x. */
+export async function dragSplitterTo(page: Page, target: (x: number) => number): Promise<void> {
+  const box = await boxOf(splitter(page));
+  const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await dragBetween(page, from, { x: target(from.x), y: from.y });
+}
+
+/** The visible width of the piano roll scroller. */
+export async function editorScrollWidth(page: Page): Promise<number> {
+  return page.locator('.piano-roll__scroll').evaluate((element) => element.clientWidth);
 }
