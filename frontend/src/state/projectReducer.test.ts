@@ -265,12 +265,44 @@ describe('pedal overlaps', () => {
 });
 
 describe('project/setBpm', () => {
-  it('changes bpm without moving notes in seconds', () => {
+  it('rescales notes and pedals to keep their bars and beats', () => {
     const state = makeState();
-    const next = projectReducer(state, setBpm(90));
-    expect(next.bpm).toBe(90);
-    expect(next.notes).toBe(state.notes);
-    expect(next.pedals).toBe(state.pedals);
+    const next = projectReducer(state, setBpm(60));
+    expect(next.bpm).toBe(60);
+    expect(next.notes).toEqual([
+      { ...n1, start: 0, duration: 1 },
+      { ...n2, start: 1, duration: 1 },
+      { ...n3, start: 2, duration: 2 },
+    ]);
+    expect(next.pedals).toEqual([
+      { ...sustain, start: 0, end: 2 },
+      { ...soft, start: 1, end: 4 },
+    ]);
+  });
+
+  it('compresses notes for a faster tempo', () => {
+    const next = projectReducer(makeState(), setBpm(240));
+    expect(next.notes.map((n) => [n.start, n.duration])).toEqual([
+      [0, 0.25],
+      [0.25, 0.25],
+      [0.5, 0.5],
+    ]);
+  });
+
+  it('rescales with the clamped bpm', () => {
+    const state = makeState();
+    const fastest = projectReducer(state, setBpm(1000));
+    expect(fastest.bpm).toBe(300);
+    expect(fastest.notes[2].start).toBeCloseTo(0.4, 9);
+    expect(fastest.notes[2].duration).toBeCloseTo(0.4, 9);
+    const slowest = projectReducer(state, setBpm(1));
+    expect(slowest.bpm).toBe(20);
+    expect(slowest.notes[2].start).toBe(6);
+  });
+
+  it('returns the same state when the clamped bpm does not change', () => {
+    const state = makeState({ bpm: 300 });
+    expect(projectReducer(state, setBpm(1000))).toBe(state);
   });
 
   it('ignores non-finite values and clamps out-of-range ones', () => {
@@ -301,6 +333,13 @@ describe('project/setTimeSignature', () => {
     expect(projectReducer(state, setTimeSignature({ numerator: 0, denominator: 4 }))).toBe(state);
     expect(projectReducer(state, setTimeSignature({ numerator: 4, denominator: 4 }))).toBe(state);
   });
+
+  it('does not move notes or pedals', () => {
+    const state = makeState();
+    const next = projectReducer(state, setTimeSignature({ numerator: 3, denominator: 8 }));
+    expect(next.notes).toBe(state.notes);
+    expect(next.pedals).toBe(state.pedals);
+  });
 });
 
 describe('project/load', () => {
@@ -321,6 +360,20 @@ describe('project/replace', () => {
   it('keeps the same state when replaced by itself', () => {
     const state = makeState();
     expect(projectReducer(state, replaceProject(state))).toBe(state);
+  });
+});
+
+describe('project/load and project/replace with another bpm', () => {
+  it('do not rescale the seconds of the new project', () => {
+    const state = makeState();
+    const other = makeState({ bpm: 60, notes: [n3], pedals: [soft] });
+    const replaced = projectReducer(state, replaceProject(other));
+    expect(replaced).toBe(other);
+    expect(replaced.notes[0].start).toBe(1);
+    const loaded = projectReducer(state, loadProject(other));
+    expect(loaded).toEqual(other);
+    expect(loaded.notes[0]).toEqual(n3);
+    expect(loaded.pedals[0]).toEqual(soft);
   });
 });
 
