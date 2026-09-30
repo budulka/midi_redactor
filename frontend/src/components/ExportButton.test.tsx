@@ -246,3 +246,22 @@ describe('ExportButton', () => {
     expect(button).toHaveAttribute('title', 'Export .mid (Ctrl+S)');
   });
 });
+
+describe('ExportButton and the media offset', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('sends the media offset with the project', () => {
+    const { calls } = stubFetch();
+    render(
+      <ProjectProvider initialProject={{ ...initialProject, mediaOffset: 1.25 }}>
+        <ExportButton />
+      </ProjectProvider>,
+    );
+    fireEvent.click(exportButton());
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0].init.body)).toContain('"mediaOffset":1.25');
+  });
+});

@@ -4,6 +4,8 @@ import BackendStatus from './components/BackendStatus.tsx';
 import ExportButton from './components/ExportButton.tsx';
 import ImportButton from './components/ImportButton.tsx';
 import KeyboardShortcuts from './components/KeyboardShortcuts.tsx';
+import MediaOffsetControls from './components/MediaOffsetControls.tsx';
+import MediaOffsetMarker from './components/MediaOffsetMarker.tsx';
 import ProjectInfo from './components/ProjectInfo.tsx';
 import PianoRoll from './components/PianoRoll/PianoRoll.tsx';
 import TempoControls from './components/TempoControls.tsx';
@@ -48,7 +50,8 @@ export default function App() {
                       <VideoPlayer />
                     </section>
                     <section className="app__audio" aria-label="Audio track">
-                      <AudioTrack />
+                      <AudioTrack overlay={<MediaOffsetMarker />} />
+                      <MediaOffsetControls />
                     </section>
                   </>
                 }

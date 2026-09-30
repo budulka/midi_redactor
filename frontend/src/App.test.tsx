@@ -148,4 +148,15 @@ describe('App', () => {
     expect(splitter).toHaveAttribute('aria-valuenow', '360');
     expect(await screen.findByText('backend: online')).toBeInTheDocument();
   });
+
+  it('shows the media offset controls in the audio track', async () => {
+    render(<App />);
+    const audio = within(screen.getByRole('region', { name: 'Audio track' }));
+    const group = within(audio.getByRole('group', { name: 'Media offset' }));
+    expect(group.getByLabelText('Media offset (seconds)')).toHaveValue(0);
+    expect(
+      group.getByRole('button', { name: 'Set bar 1 to the current media position' }),
+    ).toBeDisabled();
+    expect(await screen.findByText('backend: online')).toBeInTheDocument();
+  });
 });
