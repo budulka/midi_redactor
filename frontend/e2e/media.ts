@@ -5,6 +5,8 @@ export interface TestVideoOptions {
   readonly height: number;
   /** Length of the recording, 800 ms by default. */
   readonly durationMs?: number;
+  /** Adds a sound track (a 440 Hz tone), so the video has audio to draw. */
+  readonly withSound?: boolean;
 }
 
 const DEFAULT_DURATION_MS = 800;
@@ -18,7 +20,7 @@ const TOLERANCE_PX = 1;
  */
 export async function recordTestVideo(page: Page, options: TestVideoOptions): Promise<Buffer> {
   const base64 = await page.evaluate(
-    async ({ width, height, durationMs }) => {
+    async ({ width, height, durationMs, withSound }) => {
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
@@ -38,8 +40,24 @@ export async function recordTestVideo(page: Page, options: TestVideoOptions): Pr
         context.strokeRect(0, 0, width, height);
       };
       draw();
-      const stream = canvas.captureStream(30);
-      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
+      const canvasStream = canvas.captureStream(30);
+      let stream: MediaStream = canvasStream;
+      let audioContext: AudioContext | null = null;
+      if (withSound) {
+        audioContext = new AudioContext();
+        const oscillator = audioContext.createOscillator();
+        oscillator.frequency.value = 440;
+        const destination = audioContext.createMediaStreamDestination();
+        oscillator.connect(destination);
+        oscillator.start();
+        stream = new MediaStream([
+          ...canvasStream.getVideoTracks(),
+          ...destination.stream.getAudioTracks(),
+        ]);
+      }
+      const recorder = new MediaRecorder(stream, {
+        mimeType: withSound ? 'video/webm;codecs=vp8,opus' : 'video/webm;codecs=vp8',
+      });
       const chunks: Blob[] = [];
       recorder.addEventListener('dataavailable', (event) => chunks.push(event.data));
       const stopped = new Promise<void>((resolve) =>
@@ -51,6 +69,7 @@ export async function recordTestVideo(page: Page, options: TestVideoOptions): Pr
       recorder.stop();
       await stopped;
       window.clearInterval(timer);
+      await audioContext?.close();
       const blob = new Blob(chunks, { type: 'video/webm' });
       return await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -66,6 +85,7 @@ export async function recordTestVideo(page: Page, options: TestVideoOptions): Pr
       width: options.width,
       height: options.height,
       durationMs: options.durationMs ?? DEFAULT_DURATION_MS,
+      withSound: options.withSound ?? false,
     },
   );
   return Buffer.from(base64, 'base64');
@@ -136,4 +156,108 @@ export async function expectVideoInsidePanel(page: Page): Promise<void> {
   expect(Math.abs(videoBox.width - stageBox.width)).toBeLessThanOrEqual(TOLERANCE_PX);
   expect(Math.abs(videoBox.height - stageBox.height)).toBeLessThanOrEqual(TOLERANCE_PX);
   expect(await video.evaluate((element) => getComputedStyle(element).objectFit)).toBe('contain');
+}
+
+/** A mono 16-bit PCM WAV file (8 kHz) with a sine tone, built in Node. */
+export function makeTestWav(seconds = 2, frequency = 440): Buffer {
+  const sampleRate = 8000;
+  const samples = Math.round(seconds * sampleRate);
+  const dataSize = samples * 2;
+  const buffer = Buffer.alloc(44 + dataSize);
+  buffer.write('RIFF', 0, 'ascii');
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write('WAVE', 8, 'ascii');
+  buffer.write('fmt ', 12, 'ascii');
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * 2, 28);
+  buffer.writeUInt16LE(2, 32);
+  buffer.writeUInt16LE(16, 34);
+  buffer.write('data', 36, 'ascii');
+  buffer.writeUInt32LE(dataSize, 40);
+  for (let i = 0; i < samples; i += 1) {
+    const value = Math.sin((2 * Math.PI * frequency * i) / sampleRate) * 0.5;
+    buffer.writeInt16LE(Math.round(value * 32767), 44 + i * 2);
+  }
+  return buffer;
+}
+
+/** Loads a file into the audio track and waits until its waveform is drawn. */
+export async function loadAudio(page: Page, name: string, buffer: Buffer): Promise<void> {
+  await page.getByLabel('Audio file').setInputFiles({ name, mimeType: 'audio/wav', buffer });
+  const track = page.getByRole('region', { name: 'Audio track' });
+  await expect(track.locator('.audio-track__status')).toHaveCount(0);
+  await expect(track.locator('.audio-track__name')).toHaveText(name);
+}
+
+export interface MediaElementInfo {
+  readonly tag: 'audio' | 'video';
+  readonly src: string;
+  readonly paused: boolean;
+}
+
+/** Every <audio> and <video> in the document, including those inside open shadow roots. */
+export async function mediaElements(page: Page): Promise<MediaElementInfo[]> {
+  return page.evaluate(() => {
+    const found: { tag: 'audio' | 'video'; src: string; paused: boolean }[] = [];
+    const visit = (root: Document | ShadowRoot) => {
+      for (const element of Array.from(root.querySelectorAll('*'))) {
+        if (element instanceof HTMLMediaElement) {
+          found.push({
+            tag: element instanceof HTMLVideoElement ? 'video' : 'audio',
+            src: element.currentSrc || element.src,
+            paused: element.paused,
+          });
+        }
+        if (element.shadowRoot !== null) visit(element.shadowRoot);
+      }
+    };
+    visit(document);
+    return found;
+  });
+}
+
+export interface TrackedObjectUrls {
+  readonly created: { url: string; name: string }[];
+  readonly revoked: string[];
+}
+
+/**
+ * Records the object URLs made from files (not the blob URLs WaveSurfer makes itself) and the
+ * revoked ones in window.__mediaUrls. Call it before opening the app.
+ */
+export async function trackObjectUrls(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const record: { created: { url: string; name: string }[]; revoked: string[] } = {
+      created: [],
+      revoked: [],
+    };
+    Object.assign(window, { __mediaUrls: record });
+    const create = URL.createObjectURL.bind(URL);
+    const revoke = URL.revokeObjectURL.bind(URL);
+    URL.createObjectURL = (object: Blob | MediaSource) => {
+      const url = create(object);
+      if (object instanceof File) record.created.push({ url, name: object.name });
+      return url;
+    };
+    URL.revokeObjectURL = (url: string) => {
+      record.revoked.push(url);
+      revoke(url);
+    };
+  });
+}
+
+/** The object URLs recorded by trackObjectUrls(). */
+export async function objectUrls(page: Page): Promise<TrackedObjectUrls> {
+  return page.evaluate(() => (window as unknown as { __mediaUrls: TrackedObjectUrls }).__mediaUrls);
+}
+
+/** The object URL made for the file with this name. */
+export async function objectUrlOf(page: Page, name: string): Promise<string> {
+  const { created } = await objectUrls(page);
+  const entry = created.find((item) => item.name === name);
+  if (entry === undefined) throw new Error(`no object URL for ${name}`);
+  return entry.url;
 }
