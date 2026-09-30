@@ -1,10 +1,20 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useRef } from 'react';
 import { createFakeWaveformPlayers } from '../audio/testing/FakeWaveformPlayer.ts';
+import { createFakeWaveformViews } from '../audio/testing/FakeWaveformView.ts';
+import type { CreateWaveformView } from '../audio/waveformView.ts';
 import AudioTrackProvider from './AudioTrackProvider.tsx';
-import { useAudioTrackApi, useAudioTrackState, type AudioTrackApi } from './audioTrackContext.ts';
+import {
+  useAudioTrackApi,
+  useAudioTrackState,
+  useCreateWaveformView,
+  type AudioTrackApi,
+} from './audioTrackContext.ts';
 
-vi.mock('../audio/waveSurferPlayer.ts', () => ({ createWaveSurferPlayer: vi.fn() }));
+vi.mock('../audio/waveSurferPlayer.ts', () => ({
+  createWaveSurferPlayer: vi.fn(),
+  createWaveSurferView: vi.fn(),
+}));
 
 const seenApis: AudioTrackApi[] = [];
 
@@ -99,6 +109,35 @@ describe('AudioTrackProvider', () => {
     }
     expect(() => render(<StateOnly />)).toThrow(/AudioTrackProvider/);
     expect(() => render(<ApiOnly />)).toThrow(/AudioTrackProvider/);
+    vi.mocked(console.error).mockRestore();
+  });
+
+  it('provides the waveform view factory', () => {
+    const views = createFakeWaveformViews();
+    let seen: CreateWaveformView | null = null;
+    function FactoryProbe() {
+      seen = useCreateWaveformView();
+      return null;
+    }
+    render(
+      <AudioTrackProvider
+        createPlayer={createFakeWaveformPlayers().create}
+        canPlayType={() => true}
+        createWaveformView={views.create}
+      >
+        <FactoryProbe />
+      </AudioTrackProvider>,
+    );
+    expect(seen).toBe(views.create);
+  });
+
+  it('throws when the waveform view factory is used outside the provider', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    function FactoryOnly() {
+      useCreateWaveformView();
+      return null;
+    }
+    expect(() => render(<FactoryOnly />)).toThrow(/useCreateWaveformView/);
     vi.mocked(console.error).mockRestore();
   });
 });

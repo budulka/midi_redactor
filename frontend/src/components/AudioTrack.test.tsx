@@ -8,7 +8,10 @@ import { AUDIO_FILE_ACCEPT } from '../utils/audioFormats.ts';
 import AudioTrack from './AudioTrack.tsx';
 import { stubAnimationFrames } from './testing/animationFrames.ts';
 
-vi.mock('../audio/waveSurferPlayer.ts', () => ({ createWaveSurferPlayer: vi.fn() }));
+vi.mock('../audio/waveSurferPlayer.ts', () => ({
+  createWaveSurferPlayer: vi.fn(),
+  createWaveSurferView: vi.fn(),
+}));
 
 const file = (name: string, type: string) => new File(['x'], name, { type });
 
