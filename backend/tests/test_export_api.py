@@ -82,3 +82,23 @@ def test_openapi_describes_binary_response() -> None:
 
     operation = schema["paths"][URL]["post"]
     assert "audio/midi" in operation["responses"]["200"]["content"]
+
+
+def test_media_offset_does_not_change_the_export() -> None:
+    reference = client.post(URL, json=fixture_json())
+    body = fixture_json()
+    body["mediaOffset"] = 3.2
+
+    response = client.post(URL, json=body)
+
+    assert response.status_code == 200
+    assert response.content == reference.content
+
+
+def test_media_offset_out_of_range_is_rejected() -> None:
+    body = fixture_json()
+    body["mediaOffset"] = 5000
+
+    response = client.post(URL, json=body)
+
+    assert response.status_code == 422

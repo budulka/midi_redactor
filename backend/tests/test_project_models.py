@@ -184,3 +184,38 @@ def test_project_overlapping_different_type_pedals_accepted() -> None:
 def test_project_unknown_field_invalid() -> None:
     with pytest.raises(ValidationError):
         Project.model_validate({"foo": 1})
+
+
+def project_data(**overrides: Any) -> dict[str, Any]:
+    data: dict[str, Any] = json.loads(FIXTURE.read_text())
+    data.pop("mediaOffset")
+    data.update(overrides)
+    return data
+
+
+def test_media_offset_defaults_to_zero() -> None:
+    project = Project.model_validate(project_data())
+
+    assert project.media_offset == 0.0
+
+
+def test_media_offset_is_read_and_dumped_as_camel_case() -> None:
+    project = Project.model_validate(project_data(mediaOffset=3.2))
+
+    assert project.media_offset == 3.2
+    assert project.model_dump(by_alias=True, mode="json")["mediaOffset"] == 3.2
+
+
+@pytest.mark.parametrize("offset", [-3600, 3600])
+def test_media_offset_limits_are_accepted(offset: float) -> None:
+    assert Project.model_validate(project_data(mediaOffset=offset)).media_offset == offset
+
+
+@pytest.mark.parametrize("offset", [3600.5, -3600.5, float("nan"), float("inf")])
+def test_invalid_media_offset_is_rejected(offset: float) -> None:
+    with pytest.raises(ValidationError):
+        Project.model_validate(project_data(mediaOffset=offset))
+
+
+def test_media_offset_accepts_the_field_name() -> None:
+    assert Project.model_validate(project_data(media_offset=1)).media_offset == 1.0

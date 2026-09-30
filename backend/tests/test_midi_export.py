@@ -344,3 +344,10 @@ def test_smf_structure_without_mido() -> None:
 
 def test_export_is_deterministic() -> None:
     assert export_midi(sample_project()) == export_midi(sample_project())
+
+
+@pytest.mark.parametrize("offset", [3.2, -1.5])
+def test_media_offset_does_not_change_the_file(offset: float) -> None:
+    shifted = sample_project().model_copy(update={"media_offset": offset})
+
+    assert export_midi(shifted) == export_midi(sample_project())
