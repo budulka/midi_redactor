@@ -1,4 +1,5 @@
 import appCss from './App.css?raw';
+import { MEDIA_PANEL_DEFAULT_WIDTH_PX, SPLITTER_WIDTH_PX } from './utils/mediaPanelWidth.ts';
 
 // jsdom does not lay out the page, so these tests pin the CSS rules the media panel layout relies
 // on (see the e2e test e2e/video-fit.spec.ts for the real geometry).
@@ -92,4 +93,34 @@ describe('media panel layout rules', () => {
   it.each(['.video-player__error', '.audio-track__error'])('wraps long words in %s', (name) => {
     expect(declarations(name)['overflow-wrap']).toBe('anywhere');
   });
+
+  it('puts a splitter column between the editor and the panel', () => {
+    const app = declarations('.app');
+    expect(app['grid-template-columns']).toBe(
+      `minmax(0, 1fr) ${SPLITTER_WIDTH_PX}px var(--media-panel-width, ${MEDIA_PANEL_DEFAULT_WIDTH_PX}px)`,
+    );
+    const areas = app['grid-template-areas'].replace(/["']/g, ' ').replace(/\s+/g, ' ');
+    expect(areas).toContain('editor splitter media');
+  });
+
+  it('places the splitter and shows the resize cursor', () => {
+    expect(declarations('.app__splitter')).toMatchObject({
+      'grid-area': 'splitter',
+      cursor: 'col-resize',
+    });
+  });
+
+  it('keeps the resize cursor and blocks text selection while resizing', () => {
+    expect(declarations('.app--resizing')).toMatchObject({
+      cursor: 'col-resize',
+      'user-select': 'none',
+    });
+  });
+
+  it.each(['.app--resizing .app__editor', '.app--resizing .app__media'])(
+    'stops mouse events in %s while resizing',
+    (selector) => {
+      expect(declarations(selector)['pointer-events']).toBe('none');
+    },
+  );
 });

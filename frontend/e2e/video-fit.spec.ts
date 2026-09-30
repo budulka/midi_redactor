@@ -69,11 +69,11 @@ test('a small video is scaled up to the panel', async ({ page }) => {
 test('the video fits a media panel of any width', async ({ page }) => {
   await loadWideVideo(page);
 
-  for (const width of [240, 360, 720]) {
+  for (const width of [240, 360, 720, 960]) {
     await page.evaluate((w) => {
       const app = document.querySelector<HTMLElement>('.app');
       if (app === null) throw new Error('.app is missing');
-      app.style.gridTemplateColumns = `minmax(0, 1fr) ${w}px`;
+      app.style.setProperty('--media-panel-width', `${w}px`);
     }, width);
 
     expect(Math.abs((await videoSectionWidth(page)) - width)).toBeLessThanOrEqual(1);
