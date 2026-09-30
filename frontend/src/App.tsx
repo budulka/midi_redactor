@@ -13,6 +13,7 @@ import MediaSyncBridge from './state/MediaSyncBridge.tsx';
 import EditorProvider from './state/EditorProvider.tsx';
 import ProjectProvider from './state/ProjectProvider.tsx';
 import SelectionSync from './state/SelectionSync.tsx';
+import SingleMediaSource from './state/SingleMediaSource.tsx';
 import TransportProvider from './state/TransportProvider.tsx';
 import VideoProvider from './state/VideoProvider.tsx';
 
@@ -24,6 +25,7 @@ export default function App() {
           <AudioTrackProvider>
             <VideoProvider>
               <MediaSyncBridge />
+              <SingleMediaSource />
               <SelectionSync />
               <KeyboardShortcuts />
               <div className="app">

@@ -3,6 +3,7 @@ import { detectFormat } from '../utils/mediaFormats.ts';
 import { MediaSync } from './MediaSync.ts';
 import { MAX_CORRECTION_SEEKS } from './mediaSyncRules.ts';
 import { MediaTrackController } from './MediaTrackController.ts';
+import { keepSingleMediaSource } from './singleMediaSource.ts';
 import { createFakeMediaPlayers, type FakeMediaPlayer } from './testing/FakeMediaPlayer.ts';
 import { FakeSyncClock } from './testing/FakeSyncClock.ts';
 
@@ -491,6 +492,25 @@ describe('MediaSync', () => {
       track.load();
       track.player().emitReady(200);
       expect(sync.getMediaDuration()).toBe(200);
+    });
+
+    it('keeps the duration while another track replaces the file', () => {
+      const { sync, listener, track: a } = attachedReady(180);
+      const b = makeController();
+      sync.attach(b.controller);
+      keepSingleMediaSource([a.controller, b.controller]);
+      // Recorded on every duration change, so a drop to 0 in the middle of load() shows up too.
+      const durations: number[] = [];
+      sync.subscribe(() => durations.push(sync.getMediaDuration()));
+      b.load();
+      expect(a.controller.getSnapshot().status).toBe('empty');
+      expect(b.controller.getSnapshot().status).toBe('loading');
+      expect(sync.getMediaDuration()).toBe(180);
+      expect(listener).not.toHaveBeenCalled();
+      expect(durations).toEqual([]);
+      b.player().emitReady(120);
+      expect(sync.getMediaDuration()).toBe(120);
+      expect(durations).toEqual([120]);
     });
 
     it('drops the duration at once when a file is removed', () => {
