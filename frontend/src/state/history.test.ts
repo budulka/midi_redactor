@@ -6,6 +6,7 @@ import {
   loadProject,
   replaceProject,
   setBpm,
+  setMediaOffset,
   updateNote,
   updatePedal,
 } from './actions.ts';
@@ -164,5 +165,22 @@ describe('historyReducer', () => {
     history = historyReducer(history, redo());
     expect(history.present.bpm).toBe(60);
     expect(history.present.notes[1].start).toBe(2);
+  });
+});
+
+describe('media offset history', () => {
+  it('records a media offset change as one undo step', () => {
+    let history = createHistory(p0);
+    const before = history.present;
+    history = historyReducer(history, setMediaOffset(3.2));
+    expect(history.past).toHaveLength(1);
+    expect(history.present.mediaOffset).toBe(3.2);
+
+    history = historyReducer(history, undo());
+    expect(history.present.mediaOffset).toBe(0);
+    expect(history.present).toBe(before);
+
+    history = historyReducer(history, redo());
+    expect(history.present.mediaOffset).toBe(3.2);
   });
 });

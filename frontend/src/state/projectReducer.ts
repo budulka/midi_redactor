@@ -1,5 +1,5 @@
 import type { NoteChange, PedalChange, ProjectAction } from './actions.ts';
-import { clampBpm, normalizeNote, normalizePedal } from './normalize.ts';
+import { clampBpm, normalizeMediaOffset, normalizeNote, normalizePedal } from './normalize.ts';
 import { pedalsOverlap } from '../utils/pedalIntervals.ts';
 import { rescaleProjectTempo } from '../utils/tempoRescale.ts';
 import type { Note, PedalEvent, Project } from './types.ts';
@@ -173,6 +173,11 @@ export function projectReducer(state: Project, action: ProjectAction): Project {
         return state;
       }
       return { ...state, timeSignature: { numerator, denominator } };
+    }
+    case 'project/setMediaOffset': {
+      if (!Number.isFinite(action.offset)) return state;
+      const mediaOffset = normalizeMediaOffset(action.offset);
+      return mediaOffset === state.mediaOffset ? state : { ...state, mediaOffset };
     }
     case 'project/load':
       return action.project;

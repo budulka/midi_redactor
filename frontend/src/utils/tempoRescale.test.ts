@@ -303,3 +303,9 @@ describe('rescaleProjectTempo', () => {
     expect(back.pedals[0].end).toBeCloseTo(3.3, 9);
   });
 });
+
+describe('rescaleProjectTempo and the media offset', () => {
+  it('keeps the media offset', () => {
+    expect(rescaleProjectTempo(project({ mediaOffset: 3.2 }), 60).mediaOffset).toBe(3.2);
+  });
+});

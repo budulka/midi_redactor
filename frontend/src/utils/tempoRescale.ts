@@ -3,8 +3,8 @@ import type { Note, PedalEvent, PedalType, Project } from '../state/types.ts';
 import { assertPositiveBpm } from './time.ts';
 
 /**
- * Timeline seconds of the start of the first bar. Until the media offset (task 015) exists,
- * bar 1 starts at 0 s.
+ * Timeline seconds of the start of the first bar. Bar 1 is always at 0 s of the timeline; the
+ * media offset (utils/mediaTimeMap.ts) maps media time onto the timeline and does not move bar 1.
  */
 export const FIRST_BAR_START_SECONDS = 0;
 
