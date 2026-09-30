@@ -1,6 +1,7 @@
 import type { NoteChange, PedalChange, ProjectAction } from './actions.ts';
 import { clampBpm, normalizeNote, normalizePedal } from './normalize.ts';
 import { pedalsOverlap } from '../utils/pedalIntervals.ts';
+import { rescaleProjectTempo } from '../utils/tempoRescale.ts';
 import type { Note, PedalEvent, Project } from './types.ts';
 import { validateTimeSignature } from './validation.ts';
 
@@ -158,7 +159,9 @@ export function projectReducer(state: Project, action: ProjectAction): Project {
     case 'project/setBpm': {
       if (!Number.isFinite(action.bpm)) return state;
       const bpm = clampBpm(action.bpm);
-      return bpm === state.bpm ? state : { ...state, bpm };
+      // Notes and pedals keep their bars and beats; project/load and project/replace do not
+      // rescale because such a project already has seconds that match its own bpm.
+      return bpm === state.bpm ? state : rescaleProjectTempo(state, bpm);
     }
     case 'project/setTimeSignature': {
       const { numerator, denominator } = action.timeSignature;

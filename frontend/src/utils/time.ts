@@ -12,7 +12,7 @@ export interface BarPosition {
   readonly fraction: number;
 }
 
-function assertPositiveBpm(bpm: number): void {
+export function assertPositiveBpm(bpm: number): void {
   if (!(bpm > 0) || !Number.isFinite(bpm)) {
     throw new RangeError(`bpm must be a positive finite number, got ${bpm}`);
   }

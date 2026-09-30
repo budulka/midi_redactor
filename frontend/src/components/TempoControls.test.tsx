@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import ProjectProvider from '../state/ProjectProvider.tsx';
+import { useHistoryApi } from '../state/historyContext.ts';
 import { useProject } from '../state/projectContext.ts';
 import type { Project } from '../state/types.ts';
 import TempoControls from './TempoControls.tsx';
@@ -75,5 +76,55 @@ describe('TempoControls', () => {
     expect(tempo.value).toBe('90');
     expect(numerator.value).toBe('6');
     expect(denominator.value).toBe('8');
+  });
+
+  it('rescales notes and pedals as one undo step', () => {
+    function TimesProbe() {
+      const { notes, pedals } = useProject();
+      const history = useHistoryApi();
+      const [note] = notes;
+      const [pedal] = pedals;
+      return (
+        <>
+          <span data-testid="times">{`${note.start}/${note.duration} ${pedal.start}-${pedal.end}`}</span>
+          <button type="button" onClick={history.undo}>
+            undo
+          </button>
+          <button type="button" onClick={history.redo}>
+            redo
+          </button>
+        </>
+      );
+    }
+    render(
+      <ProjectProvider
+        initialProject={{
+          bpm: 120,
+          timeSignature: { numerator: 4, denominator: 4 },
+          notes: [{ id: 'a', pitch: 60, start: 1, duration: 0.5, velocity: 100 }],
+          pedals: [{ id: 'p', type: 'sustain', start: 1, end: 2 }],
+        }}
+      >
+        <TempoControls />
+        <TimesProbe />
+      </ProjectProvider>,
+    );
+    const tempo = screen.getByLabelText<HTMLInputElement>('Tempo (quarter notes per minute)');
+    const times = screen.getByTestId('times');
+
+    fireEvent.change(tempo, { target: { value: '60' } });
+    expect(times).toHaveTextContent('1/0.5 1-2');
+
+    fireEvent.keyDown(tempo, { key: 'Enter' });
+    expect(times).toHaveTextContent('2/1 2-4');
+    expect(tempo.value).toBe('60');
+
+    fireEvent.click(screen.getByRole('button', { name: 'undo' }));
+    expect(times).toHaveTextContent('1/0.5 1-2');
+    expect(tempo.value).toBe('120');
+
+    fireEvent.click(screen.getByRole('button', { name: 'redo' }));
+    expect(times).toHaveTextContent('2/1 2-4');
+    expect(tempo.value).toBe('60');
   });
 });

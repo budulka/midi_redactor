@@ -143,4 +143,26 @@ describe('historyReducer', () => {
     history = historyReducer(history, replaceProject({ ...createEmptyProject(), bpm: 60 }));
     expect(history.future).toEqual([]);
   });
+
+  it('records a tempo change as one undo step', () => {
+    let history = addFirstNote();
+    history = historyReducer(
+      history,
+      addNotes([{ id: 'n2', pitch: 64, start: 1, duration: 0.5, velocity: 90 }]),
+    );
+    const before = history.present;
+    const pastLength = history.past.length;
+    history = historyReducer(history, setBpm(60));
+    expect(history.past).toHaveLength(pastLength + 1);
+    expect(history.present.bpm).toBe(60);
+    expect(history.present.notes[1]).toMatchObject({ id: 'n2', start: 2, duration: 1 });
+
+    history = historyReducer(history, undo());
+    expect(history.present).toBe(before);
+    expect(history.present.notes[1].start).toBe(1);
+
+    history = historyReducer(history, redo());
+    expect(history.present.bpm).toBe(60);
+    expect(history.present.notes[1].start).toBe(2);
+  });
 });

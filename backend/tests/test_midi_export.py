@@ -40,6 +40,16 @@ def test_note_events_converts_seconds_to_ticks() -> None:
     assert [event.order for event in events] == [EventOrder.NOTE_ON, EventOrder.NOTE_OFF]
 
 
+def test_same_beats_at_another_tempo_give_the_same_ticks() -> None:
+    fast_notes = simple(note_events([note("a", 60, 0.5, 1.125, 64)], 120))
+    slow_notes = simple(note_events([note("a", 60, 1.0, 2.25, 64)], 60))
+    assert fast_notes == slow_notes == [(480, "note_on", 60, 64), (1560, "note_off", 60, 64)]
+
+    fast_pedals = simple(pedal_events([pedal("p", "sustain", 0.5, 1.5)], 120))
+    slow_pedals = simple(pedal_events([pedal("p", "sustain", 1.0, 3.0)], 60))
+    assert fast_pedals == slow_pedals
+
+
 def test_note_lasts_at_least_one_tick() -> None:
     events = note_events([note("a", 60, 0, 0.001)], 20)
 
