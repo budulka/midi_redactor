@@ -1,6 +1,8 @@
 import {
   afterTransportCommand,
   INITIAL_TRACK_SYNC_STATE,
+  MAX_CORRECTION_SEEKS,
+  mediaAhead,
   nudgeFactor,
   planMediaSync,
   type MediaSyncInput,
@@ -282,5 +284,162 @@ describe('planMediaSync before the media starts (negative offset)', () => {
       mediaPlaying: false,
     });
     expect(action.seekTo).toBe(0);
+  });
+});
+
+describe('mediaAhead', () => {
+  it('crosses the next cut', () => {
+    expect(mediaAhead(3, 0.3, { ...I, segmentEnd: 3.1, nextSegmentStart: 6 })).toBeCloseTo(6.2, 9);
+  });
+
+  it('does not go back across the previous cut', () => {
+    expect(mediaAhead(5.05, -0.2, { ...I, segmentStart: 5 })).toBe(5);
+  });
+
+  it('stays before the tail of the media', () => {
+    expect(mediaAhead(29.95, 0.5, { ...I, duration: 30 })).toBeCloseTo(29.9, 9);
+  });
+});
+
+describe('planMediaSync with media cuts', () => {
+  /** Cooldown active: a seek was made half a second ago. */
+  const COOLDOWN = { lastSeekAt: 99.5 };
+
+  describe('jump over a passed cut', () => {
+    it('jumps to the target although the cooldown is active', () => {
+      const result = plan({ target: 5.1, segmentStart: 5, mediaTime: 1.95 }, COOLDOWN);
+      expect(result.action).toEqual({ ...NONE, seekTo: 5.1 });
+      expect(result.state).toEqual({ ...S, lastSeekAt: 100, checkAfterSeek: false });
+    });
+
+    it('jumps ahead by the seek lead, across the next cut too', () => {
+      expect(
+        plan({ target: 5.1, segmentStart: 5, mediaTime: 1.95 }, { ...COOLDOWN, seekLead: 0.2 })
+          .action.seekTo,
+      ).toBeCloseTo(5.3, 9);
+      expect(
+        plan(
+          { target: 5.1, segmentStart: 5, segmentEnd: 5.2, nextSegmentStart: 8, mediaTime: 1.95 },
+          { ...COOLDOWN, seekLead: 0.2 },
+        ).action.seekTo,
+      ).toBeCloseTo(8.1, 9);
+    });
+
+    it('jumps although the correction seeks are used up', () => {
+      const result = plan(
+        { target: 5.1, segmentStart: 5, mediaTime: 1.95 },
+        { ...COOLDOWN, seekStreak: MAX_CORRECTION_SEEKS },
+      );
+      expect(result.action.seekTo).toBe(5.1);
+      expect(result.state.seekStreak).toBe(MAX_CORRECTION_SEEKS);
+    });
+  });
+
+  describe('media entering the next cut', () => {
+    const cut = { segmentEnd: 2, nextSegmentStart: 5 };
+
+    it('jumps over the cut keeping its lead', () => {
+      const result = plan({ ...cut, target: 1.98, mediaTime: 2.01 }, COOLDOWN);
+      expect(result.action.seekTo).toBeCloseTo(5.01, 9);
+      expect(result.action.pause).toBe(false);
+      expect(result.state.lastSeekAt).toBe(100);
+    });
+
+    it('does not jump a second time when the media is already past the cut', () => {
+      const result = plan({ ...cut, target: 1.98, mediaTime: 5.02 }, COOLDOWN);
+      expect(result.action).toEqual(NONE);
+      expect(result.state).toEqual({ ...S, ...COOLDOWN });
+      expect(plan({ ...cut, target: 1.98, mediaTime: 5.02 }).action.seekTo).toBeNull();
+    });
+
+    it('seeks back before the cut when the media is far past it', () => {
+      const result = plan({ ...cut, target: 1, mediaTime: 9 });
+      expect(result.action.seekTo).toBe(1);
+      expect(result.state.seekStreak).toBe(1);
+    });
+
+    it('seeks back to a far target instead of jumping', () => {
+      const result = plan({ ...cut, target: 0, mediaTime: 2.5 });
+      expect(result.action.seekTo).toBe(0);
+    });
+  });
+
+  describe('cut that runs to the end of the file', () => {
+    const tail = { segmentEnd: 25, nextSegmentStart: 30, duration: 30 };
+
+    it('pauses the playing media at the cut', () => {
+      expect(plan({ ...tail, target: 24.97, mediaTime: 25 }).action).toEqual({
+        ...NONE,
+        pause: true,
+      });
+      expect(plan({ ...tail, target: 24.97, mediaTime: 24.96 }).action).toEqual({
+        ...NONE,
+        pause: true,
+      });
+    });
+
+    it('does not start the paused media again', () => {
+      const result = plan(
+        { ...tail, target: 24.97, mediaTime: 25, mediaPlaying: false },
+        { playRequested: true },
+      );
+      expect(result.action).toMatchObject({ seekTo: null, play: false });
+      expect(result.state.playRequested).toBe(false);
+    });
+
+    it('does nothing while the cut is far', () => {
+      expect(plan({ ...tail, target: 20, mediaTime: 20 }).action).toEqual(NONE);
+    });
+
+    it('plays from the start after a pause at the end', () => {
+      const result = planMediaSync(
+        { ...I, ...tail, target: 0, mediaTime: 30, mediaPlaying: false },
+        INITIAL_TRACK_SYNC_STATE,
+      );
+      expect(result.action).toEqual({ ...NONE, seekTo: 0, play: true });
+      expect(result.state.playRequested).toBe(true);
+    });
+
+    it('seeks a playing media at the cut back to a far target', () => {
+      const result = plan({ ...tail, target: 0, mediaTime: 25 });
+      expect(result.action).toEqual({ ...NONE, seekTo: 0 });
+      expect(result.state).toMatchObject({ seekStreak: 1, checkAfterSeek: true });
+    });
+
+    it('pauses within the hard drift of the cut and seeks beyond it', () => {
+      expect(plan({ ...tail, target: 24.8, mediaTime: 25 }).action).toEqual({
+        ...NONE,
+        pause: true,
+      });
+      expect(plan({ ...tail, target: 24.7, mediaTime: 25 }).action).toEqual({
+        ...NONE,
+        seekTo: 24.7,
+      });
+    });
+
+    it('moves a far media to a target in the last moments before the cut', () => {
+      expect(plan({ ...tail, target: 24.95, mediaTime: 10 }).action).toEqual({
+        ...NONE,
+        seekTo: 24.95,
+        pause: true,
+      });
+    });
+  });
+
+  describe('without a jump', () => {
+    it('keeps the cooldown inside one segment', () => {
+      expect(
+        plan({ target: 3, segmentStart: -Infinity, segmentEnd: 10, mediaTime: 3.02 }, COOLDOWN)
+          .action,
+      ).toEqual(NONE);
+    });
+
+    it('corrects across the next cut', () => {
+      const { action } = plan(
+        { target: 3, mediaTime: 2, segmentEnd: 3.1, nextSegmentStart: 6 },
+        { seekLead: 0.3 },
+      );
+      expect(action.seekTo).toBeCloseTo(6.2, 9);
+    });
   });
 });
