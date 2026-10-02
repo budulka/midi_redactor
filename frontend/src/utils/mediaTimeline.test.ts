@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   TIMELINE_KEY_BIG_STEP_SECONDS,
   TIMELINE_KEY_STEP_SECONDS,
+  clampSelection,
   hiddenIntroSeconds,
   mediaPositionText,
   mediaTimelineExtent,
+  selectionLabel,
   timelineSeekForKey,
 } from './mediaTimeline.ts';
 
@@ -71,5 +73,27 @@ describe('mediaPositionText', () => {
 
   it('omits the media time before the media starts', () => {
     expect(mediaPositionText(1, { offset: -2, cuts: [] })).toBe('0:01.000');
+  });
+});
+
+describe('clampSelection', () => {
+  const extent = { start: 2, end: 30 };
+
+  it('orders the ends and clamps them to the media', () => {
+    expect(clampSelection(8, 5, extent)).toEqual({ start: 5, end: 8 });
+    expect(clampSelection(1, 5, extent)).toEqual({ start: 2, end: 5 });
+    expect(clampSelection(25, 40, extent)).toEqual({ start: 25, end: 30 });
+  });
+
+  it('gives null for a too short selection or without media', () => {
+    expect(clampSelection(5, 5.005, extent)).toBeNull();
+    expect(clampSelection(31, 40, extent)).toBeNull();
+    expect(clampSelection(5, 8, null)).toBeNull();
+  });
+});
+
+describe('selectionLabel', () => {
+  it('names the selected range', () => {
+    expect(selectionLabel({ start: 5, end: 8 })).toBe('Selected 0:05.000–0:08.000');
   });
 });

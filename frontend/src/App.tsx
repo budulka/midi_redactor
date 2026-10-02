@@ -4,6 +4,7 @@ import BackendStatus from './components/BackendStatus.tsx';
 import ExportButton from './components/ExportButton.tsx';
 import ImportButton from './components/ImportButton.tsx';
 import KeyboardShortcuts from './components/KeyboardShortcuts.tsx';
+import MediaCutsShade from './components/MediaCutsShade.tsx';
 import MediaOffsetControls from './components/MediaOffsetControls.tsx';
 import MediaTimeline from './components/MediaTimeline.tsx';
 import MediaOffsetMarker from './components/MediaOffsetMarker.tsx';
@@ -51,7 +52,14 @@ export default function App() {
                       <VideoPlayer />
                     </section>
                     <section className="app__audio" aria-label="Audio track">
-                      <AudioTrack overlay={<MediaOffsetMarker />} />
+                      <AudioTrack
+                        overlay={
+                          <>
+                            <MediaCutsShade />
+                            <MediaOffsetMarker />
+                          </>
+                        }
+                      />
                       <MediaOffsetControls />
                     </section>
                   </>
