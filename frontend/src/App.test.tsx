@@ -116,6 +116,14 @@ describe('App', () => {
     expect(await screen.findByText('backend: online')).toBeInTheDocument();
   });
 
+  it('shows the media timeline above the piano roll', async () => {
+    render(<App />);
+    const pianoRoll = within(screen.getByRole('region', { name: 'Piano roll' }));
+    const timeline = within(pianoRoll.getByRole('group', { name: 'Media timeline' }));
+    expect(timeline.getByRole('slider', { name: 'Media position' })).toBeInTheDocument();
+    expect(await screen.findByText('backend: online')).toBeInTheDocument();
+  });
+
   it('keeps Space in the tempo field', async () => {
     render(<App />);
     const tempo = screen.getByLabelText('Tempo (quarter notes per minute)');
