@@ -266,3 +266,24 @@ describe('ExportButton and the media offset', () => {
     expect(String(calls[0].init.body)).toContain('"mediaOffset":1.25');
   });
 });
+
+describe('ExportButton and the media cuts', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('sends the media cuts with the project', () => {
+    const { calls } = stubFetch();
+    render(
+      <ProjectProvider
+        initialProject={{ ...initialProject, mediaCuts: [{ id: 'c', start: 2, end: 5 }] }}
+      >
+        <ExportButton />
+      </ProjectProvider>,
+    );
+    fireEvent.click(exportButton());
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0].init.body)).toContain('"mediaCuts":[{"id":"c","start":2,"end":5}]');
+  });
+});

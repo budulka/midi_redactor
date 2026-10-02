@@ -61,8 +61,14 @@ export default function ImportButton() {
       }
       transportApi.stop();
       editorDispatch(clearSelection());
-      // A MIDI file knows nothing about the media: the loaded media keeps its bar 1.
-      dispatch(replaceProject({ ...result.project, mediaOffset: current.mediaOffset }));
+      // A MIDI file knows nothing about the media: the loaded media keeps its bar 1 and its cuts.
+      dispatch(
+        replaceProject({
+          ...result.project,
+          mediaOffset: current.mediaOffset,
+          mediaCuts: current.mediaCuts,
+        }),
+      );
       setOutcome({ summary: importSummary(file.name, result.project), warnings: result.warnings });
     } catch (caught) {
       if (controller.signal.aborted) return;

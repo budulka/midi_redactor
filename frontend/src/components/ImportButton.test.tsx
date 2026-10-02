@@ -1,6 +1,6 @@
 import { act, fireEvent, screen } from '@testing-library/react';
 import { MAX_MIDI_IMPORT_BYTES } from '../api/client.ts';
-import { addNotes, setMediaOffset } from '../state/actions.ts';
+import { addMediaCut, addNotes, setMediaOffset } from '../state/actions.ts';
 import { useHistoryApi, useHistoryState } from '../state/historyContext.ts';
 import { useProject, useProjectDispatch } from '../state/projectContext.ts';
 import { useTransportApi, useTransportState } from '../state/transportContext.ts';
@@ -359,5 +359,53 @@ describe('ImportButton and the media offset', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     expect(readNotes(view)).toEqual([existing]);
     expect(offset()).toBe('2.5');
+  });
+});
+
+function CutsProbe() {
+  const { mediaCuts } = useProject();
+  const dispatch = useProjectDispatch();
+  return (
+    <>
+      <button type="button" onClick={() => dispatch(addMediaCut({ start: 2, end: 5 }))}>
+        Cut media
+      </button>
+      <output aria-label="media cuts">
+        {JSON.stringify(mediaCuts.map(({ start, end }) => ({ start, end })))}
+      </output>
+    </>
+  );
+}
+
+describe('ImportButton and the media cuts', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('keeps the current media cuts of the project', async () => {
+    const { calls } = stubFetch();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const view = renderWithProviders(
+      <>
+        <ImportButton />
+        <TestControls />
+        <CutsProbe />
+      </>,
+      [existing],
+    );
+    const cuts = () => screen.getByRole('status', { name: 'media cuts' }).textContent;
+    fireEvent.click(screen.getByRole('button', { name: 'Cut media' }));
+    expect(cuts()).toBe('[{"start":2,"end":5}]');
+
+    choose();
+    await settle(calls[0], okResponse());
+
+    expect(cuts()).toBe('[{"start":2,"end":5}]');
+    expect(readNotes(view)).toEqual(imported.notes);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(readNotes(view)).toEqual([existing]);
+    expect(cuts()).toBe('[{"start":2,"end":5}]');
   });
 });
