@@ -25,8 +25,3 @@ export function globalShortcutFor(
 ): GlobalShortcutId | null {
   return shortcutFor('global', event, target);
 }
-
-/** Shortcut of the focused note grid or pedal lane; replaced by handleShortcut in the next step. */
-export function editorShortcutFor(event: KeyLike): ScopeAction<'noteGrid'> | null {
-  return shortcutFor('noteGrid', event);
-}

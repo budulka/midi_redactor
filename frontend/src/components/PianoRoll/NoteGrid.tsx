@@ -24,7 +24,8 @@ import {
 } from '../../utils/pianoRollGeometry.ts';
 import { KEYBOARD_PITCHES, isBlackKey, pitchName } from '../../utils/pitch.ts';
 import { gridStepSeconds } from '../../utils/quantize.ts';
-import { editorShortcutFor, globalShortcutFor } from '../../utils/shortcuts.ts';
+import { handleShortcut, type ScopeAction } from '../../utils/shortcutRegistry.ts';
+import { globalShortcutFor } from '../../utils/shortcuts.ts';
 import { useNoteDrag } from './useNoteDrag.ts';
 import { useMediaDuration } from '../../state/timelineContext.ts';
 
@@ -89,6 +90,8 @@ const GRID_ROWS = KEYBOARD_PITCHES.map((pitch) => (
 
 /** Semitone offsets of the vertical arrow shortcuts. */
 const PITCH_NUDGES = { nudgeUp: 1, nudgeDown: -1, octaveUp: 12, octaveDown: -12 } as const;
+
+type NudgeAction = Exclude<ScopeAction<'noteGrid'>, 'selectAll' | 'delete' | 'clearSelection'>;
 
 /**
  * The editable grid: renders notes and handles create/move/resize of one or all selected notes
@@ -167,42 +170,42 @@ export default function NoteGrid() {
       const global = globalShortcutFor(event, event.target);
       if (global === 'undo' || global === 'redo') event.preventDefault();
     }
-    const shortcut = editorShortcutFor(event);
-    if (shortcut === null) return;
     const selected = selectedNotes(notes, selectedNoteIds);
-    switch (shortcut) {
-      case 'selectAll':
-        event.preventDefault();
+    function nudge(action: NudgeAction): boolean {
+      if (selected.length === 0) return false;
+      const step = gridStepSeconds(gridDivision, bpm);
+      const dt = action === 'nudgeLeft' ? -step : action === 'nudgeRight' ? step : 0;
+      const dp = action === 'nudgeLeft' || action === 'nudgeRight' ? 0 : PITCH_NUDGES[action];
+      projectDispatch(
+        updateNotes(
+          translateNotes(selected, dt, dp).map((note) => ({
+            id: note.id,
+            patch: { start: note.start, pitch: note.pitch },
+          })),
+        ),
+      );
+      return true;
+    }
+    handleShortcut('noteGrid', event, {
+      selectAll: () => {
         editorDispatch(selectNotes(notes.map((note) => note.id)));
-        return;
-      case 'delete':
-        event.preventDefault();
+      },
+      delete: () => {
         if (selected.length > 0) projectDispatch(removeNotes(selected.map((note) => note.id)));
         if (selectedNoteIds.length > 0) editorDispatch(clearSelection());
-        return;
-      case 'clearSelection':
+      },
+      clearSelection: () => {
         // During a gesture Escape cancels it (window listener of useDragGesture) and keeps the selection.
-        if (isGestureActive() || selectedNoteIds.length === 0) return;
-        event.preventDefault();
+        if (isGestureActive() || selectedNoteIds.length === 0) return false;
         editorDispatch(clearSelection());
-        return;
-      default: {
-        if (selected.length === 0) return;
-        event.preventDefault();
-        const step = gridStepSeconds(gridDivision, bpm);
-        const dt = shortcut === 'nudgeLeft' ? -step : shortcut === 'nudgeRight' ? step : 0;
-        const dp =
-          shortcut === 'nudgeLeft' || shortcut === 'nudgeRight' ? 0 : PITCH_NUDGES[shortcut];
-        projectDispatch(
-          updateNotes(
-            translateNotes(selected, dt, dp).map((note) => ({
-              id: note.id,
-              patch: { start: note.start, pitch: note.pitch },
-            })),
-          ),
-        );
-      }
-    }
+      },
+      nudgeLeft: nudge,
+      nudgeRight: nudge,
+      nudgeUp: nudge,
+      nudgeDown: nudge,
+      octaveUp: nudge,
+      octaveDown: nudge,
+    });
   }
 
   return (
