@@ -1,4 +1,5 @@
 import { useState, type KeyboardEvent } from 'react';
+import { handleShortcut } from '../utils/shortcutRegistry.ts';
 
 interface CommitNumberInputProps {
   value: number;
@@ -34,11 +35,7 @@ export default function CommitNumberInput({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Enter') {
-      commit();
-    } else if (event.key === 'Escape') {
-      setDraft(null);
-    }
+    handleShortcut('numberField', event, { apply: commit, revert: () => setDraft(null) });
   }
 
   return (

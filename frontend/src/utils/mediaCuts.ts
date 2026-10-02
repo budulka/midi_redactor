@@ -1,6 +1,7 @@
 import { MAX_MEDIA_CUTS, MAX_MEDIA_CUT_END, MIN_MEDIA_CUT_SECONDS } from '../state/constants.ts';
 import type { MediaCut } from '../state/types.ts';
 import { timelineToMedia, type MediaTimeMap, type TimeRange } from './mediaTimeMap.ts';
+import { stepOf, type StepAction } from './keyActions.ts';
 import { formatClock } from './transportFormat.ts';
 
 export type { TimeRange } from './mediaTimeMap.ts';
@@ -153,17 +154,11 @@ export function draggedCutEdge(value: number, delta: number, limits: TimeRange):
   return roundToMs(clamp(value + delta, limits.start, limits.end));
 }
 
-/** New value of an edge for a key (ArrowLeft/Right, Shift for the big step), clamped and rounded; null for other keys. */
-export function cutEdgeForKey(
-  value: number,
-  key: string,
-  shiftKey: boolean,
-  limits: TimeRange,
-): number | null {
-  const step = shiftKey ? CUT_KEY_BIG_STEP_SECONDS : CUT_KEY_STEP_SECONDS;
-  if (key === 'ArrowLeft') return draggedCutEdge(value, -step, limits);
-  if (key === 'ArrowRight') return draggedCutEdge(value, step, limits);
-  return null;
+/** New value of an edge for a key action (the big steps are the Shift variants), clamped and rounded. */
+export function cutEdgeForAction(value: number, action: StepAction, limits: TimeRange): number {
+  const { sign, big } = stepOf(action);
+  const step = big ? CUT_KEY_BIG_STEP_SECONDS : CUT_KEY_STEP_SECONDS;
+  return draggedCutEdge(value, sign * step, limits);
 }
 
 /**

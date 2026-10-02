@@ -9,7 +9,8 @@ import {
   type PedalDragKind,
   type PedalDragState,
 } from '../../utils/pedalEditing.ts';
-import { hitTestPedals, pedalTypeAtY, type PedalHitZone } from '../../utils/pedalGeometry.ts';
+import { hitTestPedals, pedalTypeAtY } from '../../utils/pedalGeometry.ts';
+import { pedalLaneMouseAction } from '../../utils/mouseActions.ts';
 import { gapAt, neighborBounds } from '../../utils/pedalIntervals.ts';
 import { xToTime, type Point, type ViewGeometry } from '../../utils/pianoRollGeometry.ts';
 import { isAdditive, toggleId } from '../../utils/selection.ts';
@@ -38,10 +39,12 @@ export interface UsePedalDragResult {
   isGestureActive: () => boolean;
 }
 
-const KIND_BY_ZONE: Readonly<Record<PedalHitZone, PedalDragKind>> = {
-  body: 'move',
-  start: 'resize-start',
-  end: 'resize-end',
+const KIND_BY_ACTION: Readonly<
+  Record<'movePedal' | 'resizePedalStart' | 'resizePedalEnd', PedalDragKind>
+> = {
+  movePedal: 'move',
+  resizePedalStart: 'resize-start',
+  resizePedalEnd: 'resize-end',
 };
 
 /**
@@ -77,13 +80,16 @@ export function usePedalDrag(options: UsePedalDragOptions): UsePedalDragResult {
       const time = xToTime(point.x, geometry);
       const hit = hitTestPedals(pedals, point, geometry);
 
-      if (isAdditive(event)) {
+      const action = pedalLaneMouseAction('left', isAdditive(event), hit?.zone ?? null);
+      // The left button never deletes; the right one is handled by onContextMenu.
+      if (action === null || action === 'deletePedal') return;
+      if (action === 'togglePedal') {
         if (hit !== null) onSelect(toggleId(selectedIds, hit.pedalId));
         return;
       }
 
       let drag: PedalDragState;
-      if (hit === null) {
+      if (action === 'createPedal' || hit === null) {
         const type = pedalTypeAtY(point.y, geometry.rowHeight);
         const gap = gapAt(pedals, type, time);
         if (gap === null) return;
@@ -100,7 +106,7 @@ export function usePedalDrag(options: UsePedalDragOptions): UsePedalDragResult {
         if (original === undefined) return;
         onSelect([original.id]);
         drag = {
-          kind: KIND_BY_ZONE[hit.zone],
+          kind: KIND_BY_ACTION[action],
           original,
           originTime: time,
           bounds: neighborBounds(pedals, original),

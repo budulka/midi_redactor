@@ -7,7 +7,7 @@ import {
   mediaPositionText,
   mediaTimelineExtent,
   selectionLabel,
-  timelineSeekForKey,
+  timelineSeekForAction,
 } from './mediaTimeline.ts';
 
 describe('mediaTimelineExtent', () => {
@@ -39,30 +39,29 @@ describe('hiddenIntroSeconds', () => {
   });
 });
 
-describe('timelineSeekForKey', () => {
+describe('timelineSeekForAction', () => {
   it('has the documented steps', () => {
     expect(TIMELINE_KEY_STEP_SECONDS).toBe(0.1);
     expect(TIMELINE_KEY_BIG_STEP_SECONDS).toBe(1);
   });
 
   it('moves with arrows and clamps to the media', () => {
-    expect(timelineSeekForKey(1, 'ArrowRight', false, 30)).toBe(1.1);
-    expect(timelineSeekForKey(1, 'ArrowLeft', true, 30)).toBe(0);
-    expect(timelineSeekForKey(29.95, 'ArrowRight', false, 30)).toBe(30);
+    expect(timelineSeekForAction(1, 'stepForward', 30)).toBe(1.1);
+    expect(timelineSeekForAction(1, 'bigStepBack', 30)).toBe(0);
+    expect(timelineSeekForAction(29.95, 'stepForward', 30)).toBe(30);
   });
 
   it('jumps with Home and End', () => {
-    expect(timelineSeekForKey(5, 'Home', false, 30)).toBe(0);
-    expect(timelineSeekForKey(5, 'End', false, 30)).toBe(30);
+    expect(timelineSeekForAction(5, 'toStart', 30)).toBe(0);
+    expect(timelineSeekForAction(5, 'toEnd', 30)).toBe(30);
   });
 
-  it('ignores other keys and an empty media', () => {
-    expect(timelineSeekForKey(5, 'a', false, 30)).toBeNull();
-    expect(timelineSeekForKey(0, 'ArrowRight', false, 0)).toBeNull();
+  it('ignores an empty media', () => {
+    expect(timelineSeekForAction(0, 'stepForward', 0)).toBeNull();
   });
 
   it('rounds to 1 ms', () => {
-    expect(timelineSeekForKey(1.0000001, 'ArrowRight', false, 30)).toBe(1.1);
+    expect(timelineSeekForAction(1.0000001, 'stepForward', 30)).toBe(1.1);
   });
 });
 

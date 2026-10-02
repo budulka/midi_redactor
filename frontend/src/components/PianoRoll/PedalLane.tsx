@@ -7,6 +7,7 @@ import { clearSelection, selectPedals, selectedPedals } from '../../state/editor
 import { useProject, useProjectDispatch } from '../../state/projectContext.ts';
 import type { PedalEvent } from '../../state/types.ts';
 import { focusFromPointer } from '../../utils/focus.ts';
+import { pedalLaneMouseAction } from '../../utils/mouseActions.ts';
 import { withPreview, type DragOptions } from '../../utils/noteEditing.ts';
 import { defaultPedalLength } from '../../utils/pedalEditing.ts';
 import {
@@ -24,7 +25,8 @@ import {
   type ViewGeometry,
 } from '../../utils/pianoRollGeometry.ts';
 import { gridStepSeconds } from '../../utils/quantize.ts';
-import { editorShortcutFor, globalShortcutFor } from '../../utils/shortcuts.ts';
+import { handleShortcut } from '../../utils/shortcutRegistry.ts';
+import { globalShortcutFor } from '../../utils/shortcuts.ts';
 import { usePedalDrag } from './usePedalDrag.ts';
 import { useMediaDuration } from '../../state/timelineContext.ts';
 
@@ -126,7 +128,7 @@ export default function PedalLane() {
 
   function handleContextMenu(event: MouseEvent<HTMLDivElement>) {
     const hit = hitTestPedals(pedals, getLocalPoint(event), geometry);
-    if (hit === null) return;
+    if (hit === null || pedalLaneMouseAction('right', false, hit.zone) !== 'deletePedal') return;
     event.preventDefault();
     projectDispatch(removePedals([hit.pedalId]));
     if (selectedIds.has(hit.pedalId)) {
@@ -140,26 +142,20 @@ export default function PedalLane() {
       const global = globalShortcutFor(event, event.target);
       if (global === 'undo' || global === 'redo') event.preventDefault();
     }
-    switch (editorShortcutFor(event)) {
-      case 'selectAll':
-        event.preventDefault();
+    handleShortcut('pedalLane', event, {
+      selectAll: () => {
         editorDispatch(selectPedals(pedals.map((pedal) => pedal.id)));
-        return;
-      case 'delete': {
-        event.preventDefault();
+      },
+      delete: () => {
         const ids = selectedPedals(pedals, selectedPedalIds).map((pedal) => pedal.id);
         if (ids.length > 0) projectDispatch(removePedals(ids));
         if (selectedPedalIds.length > 0) editorDispatch(clearSelection());
-        return;
-      }
-      case 'clearSelection':
-        if (isGestureActive() || selectedPedalIds.length === 0) return;
-        event.preventDefault();
+      },
+      clearSelection: () => {
+        if (isGestureActive() || selectedPedalIds.length === 0) return false;
         editorDispatch(clearSelection());
-        return;
-      default:
-        return;
-    }
+      },
+    });
   }
 
   return (

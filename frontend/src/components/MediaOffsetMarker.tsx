@@ -3,7 +3,9 @@ import { setMediaOffset } from '../state/actions.ts';
 import { useProject, useProjectDispatch } from '../state/projectContext.ts';
 import { useTransportApi } from '../state/transportContext.ts';
 import { focusFromPointer } from '../utils/focus.ts';
-import { markerPercent, offsetForKey, offsetFromPointer } from '../utils/mediaOffset.ts';
+import type { SeekAction } from '../utils/keyActions.ts';
+import { markerPercent, offsetForAction, offsetFromPointer } from '../utils/mediaOffset.ts';
+import { handleShortcut } from '../utils/shortcutRegistry.ts';
 import { formatClock } from '../utils/transportFormat.ts';
 import { useDragGesture, type PointerLike } from './PianoRoll/useDragGesture.ts';
 import { useShownMedia } from './useShownMedia.ts';
@@ -79,10 +81,17 @@ export default function MediaOffsetMarker() {
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const value = offsetForKey(mediaOffset, event.key, event.shiftKey, duration);
-    if (value === null) return;
-    event.preventDefault();
-    dispatch(setMediaOffset(value));
+    const move = (action: SeekAction) => {
+      dispatch(setMediaOffset(offsetForAction(mediaOffset, action, duration)));
+    };
+    handleShortcut('barOneMarker', event, {
+      stepBack: move,
+      stepForward: move,
+      bigStepBack: move,
+      bigStepForward: move,
+      toStart: move,
+      toEnd: move,
+    });
   };
 
   return (

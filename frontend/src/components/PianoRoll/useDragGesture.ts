@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { exceedsDragThreshold } from '../../utils/noteEditing.ts';
 import type { Point } from '../../utils/pianoRollGeometry.ts';
+import { shortcutFor } from '../../utils/shortcutRegistry.ts';
 
 export interface PointerLike {
   readonly clientX: number;
@@ -95,7 +96,7 @@ export function useDragGesture<T>(getLocalPoint: (event: PointerLike) => Point):
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== 'Escape') return;
+      if (shortcutFor('dragGesture', event) === null) return;
       event.preventDefault();
       finish();
     }

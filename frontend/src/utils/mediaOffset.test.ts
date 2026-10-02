@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   markerPercent,
   mediaOffsetDescription,
-  offsetForKey,
+  offsetForAction,
   offsetFromPointer,
 } from './mediaOffset.ts';
 
@@ -33,24 +33,20 @@ describe('offsetFromPointer', () => {
   });
 });
 
-describe('offsetForKey', () => {
+describe('offsetForAction', () => {
   it('moves by small and big steps', () => {
-    expect(offsetForKey(3.2, 'ArrowRight', false, 30)).toBe(3.21);
-    expect(offsetForKey(3.2, 'ArrowLeft', true, 30)).toBe(3.1);
+    expect(offsetForAction(3.2, 'stepForward', 30)).toBe(3.21);
+    expect(offsetForAction(3.2, 'bigStepBack', 30)).toBe(3.1);
   });
 
   it('stays inside the media', () => {
-    expect(offsetForKey(0.005, 'ArrowLeft', false, 30)).toBe(0);
-    expect(offsetForKey(29.995, 'ArrowRight', false, 30)).toBe(30);
+    expect(offsetForAction(0.005, 'stepBack', 30)).toBe(0);
+    expect(offsetForAction(29.995, 'stepForward', 30)).toBe(30);
   });
 
   it('jumps to the ends', () => {
-    expect(offsetForKey(3.2, 'Home', false, 30)).toBe(0);
-    expect(offsetForKey(3.2, 'End', false, 30)).toBe(30);
-  });
-
-  it('ignores other keys', () => {
-    expect(offsetForKey(3.2, 'a', false, 30)).toBeNull();
+    expect(offsetForAction(3.2, 'toStart', 30)).toBe(0);
+    expect(offsetForAction(3.2, 'toEnd', 30)).toBe(30);
   });
 });
 

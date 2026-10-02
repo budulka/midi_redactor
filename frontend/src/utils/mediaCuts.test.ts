@@ -4,7 +4,7 @@ import type { MediaCut } from '../state/types.ts';
 import {
   addCut,
   cutDescription,
-  cutEdgeForKey,
+  cutEdgeForAction,
   cutEdgeLimits,
   cutRangeForSelection,
   cutShadePercent,
@@ -153,21 +153,17 @@ describe('draggedCutEdge', () => {
   });
 });
 
-describe('cutEdgeForKey', () => {
+describe('cutEdgeForAction', () => {
   const limits = { start: 2.01, end: 30 };
 
   it('moves the edge with the arrow keys', () => {
-    expect(cutEdgeForKey(5, 'ArrowRight', false, limits)).toBe(5.01);
-    expect(cutEdgeForKey(5, 'ArrowLeft', true, limits)).toBe(4.9);
-  });
-
-  it('ignores other keys', () => {
-    expect(cutEdgeForKey(5, 'a', false, limits)).toBeNull();
+    expect(cutEdgeForAction(5, 'stepForward', limits)).toBe(5.01);
+    expect(cutEdgeForAction(5, 'bigStepBack', limits)).toBe(4.9);
   });
 
   it('stays within the limits', () => {
-    expect(cutEdgeForKey(2.01, 'ArrowLeft', false, limits)).toBe(2.01);
-    expect(cutEdgeForKey(29.95, 'ArrowRight', true, limits)).toBe(30);
+    expect(cutEdgeForAction(2.01, 'stepBack', limits)).toBe(2.01);
+    expect(cutEdgeForAction(29.95, 'bigStepForward', limits)).toBe(30);
   });
 });
 

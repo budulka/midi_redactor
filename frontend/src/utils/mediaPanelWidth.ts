@@ -1,3 +1,5 @@
+import type { SplitterAction } from './keyActions.ts';
+
 export const MEDIA_PANEL_DEFAULT_WIDTH_PX = 360;
 export const MEDIA_PANEL_MIN_WIDTH_PX = 240;
 export const MEDIA_PANEL_MAX_WIDTH_PX = 960;
@@ -36,61 +38,27 @@ export function dragMediaPanelWidth(
   return clampMediaPanelWidth(startWidth + (startX - x), viewportWidth);
 }
 
-export type SplitterKeyName = 'ArrowLeft' | 'ArrowRight' | 'Home' | 'End';
-
 /**
- * Keys of the focused splitter; the single source for keyboardMediaPanelWidth and, later, for
- * the shortcut list of task 018.
+ * New width for a key action on the focused splitter: widen → +16 (widenMore: +64),
+ * narrow → −16 (narrowMore: −64), narrowest → min, widest → max. The result is clamped.
  */
-export const SPLITTER_KEYS: readonly {
-  readonly key: SplitterKeyName;
-  readonly description: string;
-}[] = [
-  {
-    key: 'ArrowLeft',
-    description: `Widen the media panel by ${SPLITTER_KEY_STEP_PX} px (Shift: ${SPLITTER_LARGE_KEY_STEP_PX} px)`,
-  },
-  {
-    key: 'ArrowRight',
-    description: `Narrow the media panel by ${SPLITTER_KEY_STEP_PX} px (Shift: ${SPLITTER_LARGE_KEY_STEP_PX} px)`,
-  },
-  { key: 'Home', description: 'Make the media panel as narrow as possible' },
-  { key: 'End', description: 'Make the media panel as wide as possible' },
-];
-
-export interface SplitterKey {
-  readonly key: string;
-  readonly shiftKey: boolean;
-  readonly ctrlKey: boolean;
-  readonly metaKey: boolean;
-  readonly altKey: boolean;
-}
-
-function isSplitterKeyName(key: string): key is SplitterKeyName {
-  return SPLITTER_KEYS.some((entry) => entry.key === key);
-}
-
-/**
- * New width for a key on the focused splitter, or null when the key is not ours.
- * ArrowLeft → +16 (Shift: +64), ArrowRight → −16 (Shift: −64), Home → min, End → max.
- * Any key with Ctrl, ⌘ or Alt → null. The result is clamped.
- */
-export function keyboardMediaPanelWidth(
-  event: SplitterKey,
+export function splitterWidthForAction(
+  action: SplitterAction,
   width: number,
   viewportWidth: number,
-): number | null {
-  if (event.ctrlKey || event.metaKey || event.altKey) return null;
-  if (!isSplitterKeyName(event.key)) return null;
-  const step = event.shiftKey ? SPLITTER_LARGE_KEY_STEP_PX : SPLITTER_KEY_STEP_PX;
-  switch (event.key) {
-    case 'ArrowLeft':
-      return clampMediaPanelWidth(width + step, viewportWidth);
-    case 'ArrowRight':
-      return clampMediaPanelWidth(width - step, viewportWidth);
-    case 'Home':
+): number {
+  switch (action) {
+    case 'widen':
+      return clampMediaPanelWidth(width + SPLITTER_KEY_STEP_PX, viewportWidth);
+    case 'widenMore':
+      return clampMediaPanelWidth(width + SPLITTER_LARGE_KEY_STEP_PX, viewportWidth);
+    case 'narrow':
+      return clampMediaPanelWidth(width - SPLITTER_KEY_STEP_PX, viewportWidth);
+    case 'narrowMore':
+      return clampMediaPanelWidth(width - SPLITTER_LARGE_KEY_STEP_PX, viewportWidth);
+    case 'narrowest':
       return MEDIA_PANEL_MIN_WIDTH_PX;
-    case 'End':
+    case 'widest':
       return maxMediaPanelWidth(viewportWidth);
   }
 }

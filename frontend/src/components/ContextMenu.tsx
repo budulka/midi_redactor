@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { fitMenuPosition } from '../utils/contextMenu.ts';
+import { handleShortcut } from '../utils/shortcutRegistry.ts';
 
 export interface ContextMenuItem {
   readonly label: string;
@@ -78,34 +79,22 @@ export default function ContextMenu({ x, y, label, items, onClose }: ContextMenu
     const buttons = Array.from(
       menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],
     );
-    if (buttons.length === 0) return;
     const index = buttons.findIndex((button) => button === document.activeElement);
-    let next: number | null = null;
-    switch (event.key) {
-      case 'ArrowDown':
-        next = (index + 1) % buttons.length;
-        break;
-      case 'ArrowUp':
-        next = (index - 1 + buttons.length) % buttons.length;
-        break;
-      case 'Home':
-        next = 0;
-        break;
-      case 'End':
-        next = buttons.length - 1;
-        break;
-      case 'Escape':
-        event.preventDefault();
-        event.stopPropagation();
+    const focusAt = (next: number) => {
+      if (buttons.length === 0) return false;
+      buttons[next].focus();
+    };
+    const handled = handleShortcut('contextMenu', event, {
+      next: () => focusAt((index + 1) % buttons.length),
+      previous: () => focusAt((index - 1 + buttons.length) % buttons.length),
+      first: () => focusAt(0),
+      last: () => focusAt(buttons.length - 1),
+      close: () => {
         focusElement(returnFocusTo);
         onCloseRef.current();
-        return;
-      default:
-        return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    buttons[next].focus();
+      },
+    });
+    if (handled) event.stopPropagation();
   };
 
   return createPortal(
