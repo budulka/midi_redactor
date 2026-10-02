@@ -39,10 +39,17 @@ function makeController() {
   return { controller, player, load };
 }
 
+interface FakeTimeout {
+  readonly callback: () => void;
+  readonly delayMs: number;
+  cancelled: boolean;
+}
+
 function setup(clock = new FakeSyncClock()) {
   let timer: (() => void) | null = null;
   let activeTimers = 0;
   const env = { clockNow: 0 };
+  const timeouts: FakeTimeout[] = [];
   const sync = new MediaSync(clock, {
     startTimer: (callback) => {
       timer = callback;
@@ -53,6 +60,13 @@ function setup(clock = new FakeSyncClock()) {
       };
     },
     now: () => env.clockNow,
+    startTimeout: (callback, delayMs) => {
+      const timeout: FakeTimeout = { callback, delayMs, cancelled: false };
+      timeouts.push(timeout);
+      return () => {
+        timeout.cancelled = true;
+      };
+    },
   });
   const fireTimer = () => timer?.();
   const readyTrack = (duration = 30) => {
@@ -68,6 +82,7 @@ function setup(clock = new FakeSyncClock()) {
     fireTimer,
     readyTrack,
     activeTimers: () => activeTimers,
+    timeouts,
   };
 }
 
@@ -674,5 +689,173 @@ describe('MediaSync with a media offset', () => {
       clock.seek(0);
     });
     expect(setTimes(player())).toEqual(['setTime:3']);
+  });
+});
+
+describe('MediaSync with media cuts', () => {
+  const CUT = { offset: 0, cuts: [{ start: 2, end: 5 }] };
+
+  /** A playing clock and a playing track at `position`, with the map applied before Play. */
+  function playingAt(position: number, map = CUT, duration = 30) {
+    const context = setup();
+    const track = context.readyTrack(duration);
+    context.clock.set({ status: 'paused', position });
+    context.sync.attach(track.controller);
+    context.sync.setTimeMap(map);
+    context.clock.set({ status: 'playing' });
+    return { ...context, ...track };
+  }
+
+  it('shows the media after the cut at a paused cut point', () => {
+    const { clock, sync, readyTrack } = setup();
+    const { controller, player } = readyTrack(30);
+    clock.set({ status: 'paused', position: 2 });
+    sync.attach(controller);
+    sync.setTimeMap(CUT);
+    expect(setTimes(player()).at(-1)).toBe('setTime:5');
+  });
+
+  it('shortens the media on the timeline', () => {
+    const { sync, readyTrack } = setup();
+    sync.attach(readyTrack(30).controller);
+    sync.setTimeMap({ offset: 3.2, cuts: [{ start: 10, end: 15 }] });
+    expect(sync.getMediaDuration()).toBeCloseTo(21.8, 9);
+  });
+
+  it('moves a user seek into a cut to the end of the cut', () => {
+    const { clock, sync, readyTrack } = setup(new FakeSyncClock({ notifyUnchangedSeek: false }));
+    const { controller, player } = readyTrack(30);
+    clock.set({ status: 'paused', position: 0 });
+    sync.attach(controller);
+    sync.setTimeMap(CUT);
+    controller.seek(3);
+    expect(clock.seeks.at(-1)).toBe(2);
+    expect(setTimes(player()).at(-1)).toBe('setTime:5');
+  });
+
+  it('checks the media just after the next cut point', () => {
+    const { clock, player, timeouts } = playingAt(1.9);
+    expect(player().calls).toContain('play');
+    expect(timeouts.at(-1)?.delayMs).toBeCloseTo(102, 6);
+    expect(timeouts.at(-1)?.cancelled).toBe(false);
+
+    clock.position = 2.002;
+    player().currentTime = 2.002;
+    timeouts.at(-1)?.callback();
+    expect(player().calls).toContain('setTime:5.002');
+  });
+
+  it('jumps once when the media passes the cut point before the timer', () => {
+    const { clock, player, fireTimer, timeouts } = playingAt(1.98);
+    player().currentTime = 2.01;
+    player().calls.length = 0;
+    fireTimer();
+    expect(setTimes(player())).toEqual(['setTime:5.01']);
+
+    player().currentTime = 5.03;
+    clock.position = 1.99;
+    fireTimer();
+    expect(setTimes(player())).toEqual(['setTime:5.01']);
+
+    clock.position = 2.03;
+    player().currentTime = 5.04;
+    timeouts.at(-1)?.callback();
+    expect(setTimes(player())).toEqual(['setTime:5.01']);
+  });
+
+  it('pauses the media at a cut that runs to the end of the file', () => {
+    const { clock, player, fireTimer } = playingAt(24.5, {
+      offset: 0,
+      cuts: [{ start: 25, end: 30 }],
+    });
+    expect(player().calls).toContain('play');
+    player().calls.length = 0;
+    clock.position = 24.95;
+    player().currentTime = 24.95;
+    fireTimer();
+    expect(player().calls).toContain('pause');
+    const intoCut = setTimes(player()).filter((call) => {
+      const seconds = Number(call.slice('setTime:'.length));
+      return seconds >= 25 && seconds < 30;
+    });
+    expect(intoCut).toEqual([]);
+  });
+
+  it('plays from the start after a pause at the end of the timeline', () => {
+    const { clock, sync, readyTrack, fireTimer } = setup();
+    const { controller, player } = readyTrack(30);
+    sync.setTimeMap({ offset: 0, cuts: [{ start: 25, end: 30 }] });
+    clock.set({ status: 'paused', position: 40 });
+    sync.attach(controller);
+    expect(setTimes(player()).at(-1)).toBe('setTime:30');
+
+    player().calls.length = 0;
+    clock.set({ status: 'playing', position: 0 });
+    const playIndex = player().calls.indexOf('play');
+    expect(player().calls).toContain('setTime:0');
+    expect(player().calls.indexOf('setTime:0')).toBeLessThan(playIndex);
+    expect(playIndex).toBeGreaterThanOrEqual(0);
+    expect(player().calls.slice(playIndex)).not.toContain('pause');
+
+    player().emitPlay();
+    const calls = player().calls.length;
+    clock.position = 0.1;
+    player().currentTime = 0.1;
+    fireTimer();
+    const after = player().calls.slice(calls);
+    expect(after.filter((call) => call === 'pause' || call.startsWith('setTime:'))).toEqual([]);
+  });
+
+  it('scales the timer with the rate and the start delay', () => {
+    const fast = setup();
+    const fastTrack = fast.readyTrack(30);
+    fast.clock.set({ status: 'paused', position: 1.9, rate: 2 });
+    fast.sync.attach(fastTrack.controller);
+    fast.sync.setTimeMap(CUT);
+    fast.clock.set({ status: 'playing' });
+    expect(fast.timeouts.at(-1)?.delayMs).toBeCloseTo(52, 6);
+
+    const delayed = setup();
+    const delayedTrack = delayed.readyTrack(30);
+    delayed.clock.startDelay = 0.05;
+    delayed.clock.set({ status: 'paused', position: 1.9 });
+    delayed.sync.attach(delayedTrack.controller);
+    delayed.sync.setTimeMap(CUT);
+    delayed.clock.set({ status: 'playing' });
+    expect(delayed.timeouts.at(-1)?.delayMs).toBeCloseTo(152, 6);
+  });
+
+  it('has no timer without a cut ahead or while paused', () => {
+    const { clock, timeouts } = playingAt(1.9);
+    const before = timeouts.length;
+    const previous = timeouts.at(-1);
+    clock.set({ position: 3 });
+    expect(timeouts).toHaveLength(before);
+    expect(previous?.cancelled).toBe(true);
+
+    const paused = playingAt(1.9);
+    const count = paused.timeouts.length;
+    paused.clock.set({ status: 'paused' });
+    expect(paused.timeouts).toHaveLength(count);
+    expect(paused.timeouts.at(-1)?.cancelled).toBe(true);
+  });
+
+  it('cancels the timer when the tracks are detached', () => {
+    const { sync, timeouts } = playingAt(1.9);
+    sync.detachAll();
+    expect(timeouts.at(-1)?.cancelled).toBe(true);
+  });
+
+  it('jumps over a cut during the seek cooldown', () => {
+    const { clock, player, fireTimer } = playingAt(1.5);
+    clock.position = 1.5;
+    player().currentTime = 2.0;
+    fireTimer();
+    expect(setTimes(player()).at(-1)).toBe('setTime:1.5');
+
+    clock.position = 2.01;
+    player().currentTime = 1.99;
+    fireTimer();
+    expect(setTimes(player()).at(-1)).toBe('setTime:5.01');
   });
 });
