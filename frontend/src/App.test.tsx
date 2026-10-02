@@ -72,7 +72,7 @@ describe('App', () => {
     const playback = within(video.getByRole('group', { name: 'Video playback' }));
     expect(playback.getByRole('status', { name: 'Video position' })).toBeInTheDocument();
     expect(playback.getByRole('checkbox', { name: 'Mute video' })).toBeInTheDocument();
-    expect(video.getByRole('slider', { name: 'Seek video' })).toBeInTheDocument();
+    expect(video.queryByRole('slider', { name: 'Seek video' })).toBeNull();
     expect(createHtmlVideoPlayer).not.toHaveBeenCalled();
     expect(await screen.findByText('backend: online')).toBeInTheDocument();
   });
@@ -91,7 +91,7 @@ describe('App', () => {
     }
     const video = within(screen.getByRole('region', { name: 'Video' }));
     expect(video.getByRole('checkbox', { name: 'Mute video' })).toBeInTheDocument();
-    expect(video.getByRole('slider', { name: 'Seek video' })).toBeInTheDocument();
+    expect(video.queryByRole('slider', { name: 'Seek video' })).toBeNull();
     expect(createWaveSurferPlayer).not.toHaveBeenCalled();
     expect(createHtmlVideoPlayer).not.toHaveBeenCalled();
     expect(loadPianoEngine).not.toHaveBeenCalled();

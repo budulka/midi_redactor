@@ -1,30 +1,26 @@
 import { useRef } from 'react';
 import { useVideoApi, useVideoState } from '../state/videoContext.ts';
-import { ceilToStep, seekSliderValue } from '../utils/seekSlider.ts';
 import { formatMediaPosition } from '../utils/transportFormat.ts';
 import { VIDEO_FILE_ACCEPT } from '../utils/videoFormats.ts';
 import FileLoadButton from './FileLoadButton.tsx';
 import { useFileDrop } from './useFileDrop.ts';
 import { useLivePosition } from './useLivePosition.ts';
 
-/** Step of the seek slider (mouse and arrow keys). */
-export const SEEK_STEP_SECONDS = 0.1;
 /** Jump of the back/forward buttons. */
 export const SKIP_SECONDS = 5;
 
 /**
- * Video file loading, picture, seeking and mute of the video panel. Playback and speed follow the
- * transport; seeking here seeks the whole timeline.
+ * Video file loading, picture, skipping and mute of the video panel. Playback and speed follow the
+ * transport; seeking happens on the media timeline above the piano roll, the waveform and the
+ * ±5 s buttons, and always seeks the whole timeline.
  */
 export default function VideoPlayer() {
   const { status, fileName, duration, playing, position, muted, error } = useVideoState();
   const api = useVideoApi();
   const screenRef = useRef<HTMLDivElement>(null);
   const positionRef = useRef<HTMLOutputElement>(null);
-  const seekRef = useRef<HTMLInputElement>(null);
 
   const ready = status === 'ready';
-  const sliderMax = ready ? ceilToStep(duration, SEEK_STEP_SECONDS) : 0;
 
   const loadFile = (file: File) => {
     const container = screenRef.current;
@@ -34,13 +30,10 @@ export default function VideoPlayer() {
 
   const { onDragOver, onDrop } = useFileDrop(loadFile);
 
-  // The position text and the slider are written to the DOM directly, so playback does not
-  // re-render React and the uncontrolled slider is not pulled back between frames.
+  // The position text is written to the DOM directly, so playback does not re-render React.
   const showPosition = (seconds: number) => {
     const output = positionRef.current;
     if (output !== null) output.textContent = formatMediaPosition(seconds, duration);
-    const seek = seekRef.current;
-    if (seek !== null) seek.value = String(seekSliderValue(seconds, duration, sliderMax));
   };
 
   useLivePosition(playing, position, api.getCurrentTime, showPosition);
@@ -81,17 +74,6 @@ export default function VideoPlayer() {
           <p className="video-player__status video-player__overlay">Loading {fileName}…</p>
         )}
       </div>
-      <input
-        ref={seekRef}
-        type="range"
-        className="video-player__seek"
-        aria-label="Seek video"
-        min={0}
-        max={sliderMax}
-        step={SEEK_STEP_SECONDS}
-        disabled={!ready}
-        onChange={(event) => api.seek(Number(event.currentTarget.value))}
-      />
       <div className="video-player__controls" role="group" aria-label="Video playback">
         <button
           type="button"
