@@ -21,6 +21,13 @@ export interface PedalEvent {
   readonly end: number;
 }
 
+/** A range of the media file skipped on the timeline; seconds of the raw media file. */
+export interface MediaCut {
+  readonly id: string;
+  readonly start: number;
+  readonly end: number;
+}
+
 export interface TimeSignature {
   readonly numerator: number;
   readonly denominator: number;
@@ -32,6 +39,8 @@ export interface Project {
   readonly timeSignature: TimeSignature;
   /** Media second at the start of bar 1, seconds, rounded to 1 ms; see utils/mediaTimeMap.ts. */
   readonly mediaOffset: number;
+  /** Cut media ranges, sorted by start, not overlapping; see utils/mediaTimeMap.ts. */
+  readonly mediaCuts: readonly MediaCut[];
   readonly notes: readonly Note[];
   readonly pedals: readonly PedalEvent[];
 }

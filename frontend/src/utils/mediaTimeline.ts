@@ -4,6 +4,7 @@ import {
   timelineToMedia,
   type MediaTimeMap,
 } from './mediaTimeMap.ts';
+import { MIN_MEDIA_CUT_SECONDS } from '../state/constants.ts';
 import { formatClock } from './transportFormat.ts';
 
 /** Arrow keys on the media timeline move the position by this much, seconds. */
@@ -80,4 +81,25 @@ export function mediaPositionText(position: number, map: MediaTimeMap): string {
   const media = timelineToMedia(position, map);
   if (media < 0) return timeline;
   return `${timeline} (media ${formatClock(media)})`;
+}
+
+/**
+ * Timeline selection dragged from `from` to `to`: ordered and clamped to the media extent; null
+ * without an extent or when the clamped selection is shorter than MIN_MEDIA_CUT_SECONDS.
+ */
+export function clampSelection(
+  from: number,
+  to: number,
+  extent: TimelineExtent | null,
+): TimelineExtent | null {
+  if (extent === null) return null;
+  const start = Math.max(Math.min(from, to), extent.start);
+  const end = Math.min(Math.max(from, to), extent.end);
+  if (!(end - start >= MIN_MEDIA_CUT_SECONDS - 1e-9)) return null;
+  return { start, end };
+}
+
+/** "Selected 0:05.000–0:08.000". */
+export function selectionLabel(selection: TimelineExtent): string {
+  return `Selected ${formatClock(selection.start)}–${formatClock(selection.end)}`;
 }

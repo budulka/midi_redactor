@@ -45,3 +45,71 @@
 .media-timeline__intro {
   color: var(--text);
 }
+
+.media-timeline__selection {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border: 1px solid var(--note-selected);
+  border-radius: 3px;
+  background: rgb(240 179 91 / 25%);
+  pointer-events: none;
+}
+
+.media-timeline__cut {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  width: 12px;
+  margin-left: -6px;
+}
+
+/* The cut line in the middle of the mark. */
+.media-timeline__cut::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 5px;
+  width: 2px;
+  background: var(--cut);
+  pointer-events: none;
+}
+
+/* The "scissors" triangle on top of the line. */
+.media-timeline__cut::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 1px;
+  border-top: 6px solid var(--cut);
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+  pointer-events: none;
+}
+
+.media-timeline__cut-edge {
+  flex: 1;
+  cursor: ew-resize;
+  outline: none;
+}
+
+.media-timeline__cut-edge:focus-visible:not([data-pointer-focus]) {
+  background: rgb(255 107 107 / 45%);
+}
+
+.media-timeline__cut-label {
+  position: absolute;
+  top: 2px;
+  left: 14px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 18px;
+  white-space: nowrap;
+  pointer-events: none;
+}

@@ -5,6 +5,7 @@ const project: Project = {
   bpm: 120,
   timeSignature: { numerator: 3, denominator: 4 },
   mediaOffset: 0,
+  mediaCuts: [],
   notes: [
     { id: 'n1', pitch: 21, start: 0, duration: 0.25, velocity: 64 },
     { id: 'n2', pitch: 60, start: 0.5, duration: 1.125, velocity: 100 },

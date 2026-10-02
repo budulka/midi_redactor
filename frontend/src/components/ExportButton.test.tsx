@@ -14,6 +14,7 @@ const initialProject: Project = {
   bpm: 100,
   timeSignature: { numerator: 3, denominator: 4 },
   mediaOffset: 0,
+  mediaCuts: [],
   notes: [{ id: 'n1', pitch: 60, start: 0, duration: 0.5, velocity: 90 }],
   pedals: [{ id: 'p1', type: 'sustain', start: 0, end: 1 }],
 };
@@ -263,5 +264,26 @@ describe('ExportButton and the media offset', () => {
     fireEvent.click(exportButton());
     expect(calls).toHaveLength(1);
     expect(String(calls[0].init.body)).toContain('"mediaOffset":1.25');
+  });
+});
+
+describe('ExportButton and the media cuts', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('sends the media cuts with the project', () => {
+    const { calls } = stubFetch();
+    render(
+      <ProjectProvider
+        initialProject={{ ...initialProject, mediaCuts: [{ id: 'c', start: 2, end: 5 }] }}
+      >
+        <ExportButton />
+      </ProjectProvider>,
+    );
+    fireEvent.click(exportButton());
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0].init.body)).toContain('"mediaCuts":[{"id":"c","start":2,"end":5}]');
   });
 });

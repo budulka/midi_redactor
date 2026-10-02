@@ -1,12 +1,15 @@
 import * as idModule from '../utils/id.ts';
 import {
+  addMediaCut,
   addNote,
   addNotes,
   addPedals,
   loadProject,
+  removeMediaCut,
   replaceProject,
   setBpm,
   setMediaOffset,
+  updateMediaCut,
   updateNote,
   updatePedal,
 } from './actions.ts';
@@ -182,5 +185,33 @@ describe('media offset history', () => {
 
     history = historyReducer(history, redo());
     expect(history.present.mediaOffset).toBe(3.2);
+  });
+});
+
+describe('media cut history', () => {
+  it('records adding, changing and removing a cut as separate undo steps', () => {
+    vi.spyOn(idModule, 'createId').mockReturnValue('c1');
+    let history = createHistory(p0);
+    const pastBefore = history.past.length;
+    const states = [history.present];
+    history = historyReducer(history, addMediaCut({ start: 2, end: 5 }));
+    states.push(history.present);
+    history = historyReducer(history, updateMediaCut('c1', { start: 2, end: 6 }));
+    states.push(history.present);
+    history = historyReducer(history, removeMediaCut('c1'));
+    expect(history.past).toHaveLength(pastBefore + 3);
+    expect(history.present.mediaCuts).toEqual([]);
+
+    history = historyReducer(history, undo());
+    expect(history.present).toBe(states[2]);
+    expect(history.present.mediaCuts).toEqual([{ id: 'c1', start: 2, end: 6 }]);
+    history = historyReducer(history, undo());
+    expect(history.present).toBe(states[1]);
+    history = historyReducer(history, undo());
+    expect(history.present).toBe(states[0]);
+    expect(history.present.mediaCuts).toEqual([]);
+
+    history = historyReducer(history, redo());
+    expect(history.present.mediaCuts).toEqual([{ id: 'c1', start: 2, end: 5 }]);
   });
 });

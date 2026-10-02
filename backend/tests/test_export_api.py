@@ -102,3 +102,23 @@ def test_media_offset_out_of_range_is_rejected() -> None:
     response = client.post(URL, json=body)
 
     assert response.status_code == 422
+
+
+def test_media_cuts_do_not_change_the_export() -> None:
+    reference = client.post(URL, json=fixture_json())
+    body = fixture_json()
+    body["mediaCuts"] = [{"id": "c", "start": 1, "end": 3}]
+
+    response = client.post(URL, json=body)
+
+    assert response.status_code == 200
+    assert response.content == reference.content
+
+
+def test_overlapping_media_cuts_are_rejected() -> None:
+    body = fixture_json()
+    body["mediaCuts"] = [{"id": "a", "start": 1, "end": 3}, {"id": "b", "start": 2, "end": 4}]
+
+    response = client.post(URL, json=body)
+
+    assert response.status_code == 422

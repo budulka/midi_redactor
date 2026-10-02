@@ -13,6 +13,7 @@ import { Transport } from '../audio/Transport.ts';
 import { MediaSync } from '../media/MediaSync.ts';
 import { normalizeMediaOffset } from './normalize.ts';
 import { useProject } from './projectContext.ts';
+import { useMediaTimeMap } from './useMediaTimeMap.ts';
 import { MediaDurationContext } from './timelineContext.ts';
 import {
   LIVE_VELOCITY,
@@ -69,11 +70,12 @@ export default function TransportProvider({
     transport.setProject(project);
   }, [transport, project]);
 
-  // The project is the source of truth for the offset: undo, redo and imports reach the media.
-  const { mediaOffset } = project;
+  // The project is the source of truth for the offset and the cuts: undo, redo and imports
+  // reach the media.
+  const timeMap = useMediaTimeMap();
   useEffect(() => {
-    mediaSync.setTimeMap({ offset: mediaOffset });
-  }, [mediaSync, mediaOffset]);
+    mediaSync.setTimeMap(timeMap);
+  }, [mediaSync, timeMap]);
 
   useEffect(() => {
     transport.setMediaDuration(mediaDuration);
@@ -157,7 +159,16 @@ export default function TransportProvider({
       applyMediaOffset(offset, seekTo) {
         if (!Number.isFinite(offset)) return;
         mediaSync.batch(() => {
-          mediaSync.setTimeMap({ offset: normalizeMediaOffset(offset) });
+          mediaSync.setTimeMap({
+            offset: normalizeMediaOffset(offset),
+            cuts: mediaSync.getTimeMap().cuts,
+          });
+          if (seekTo !== undefined) transport.seek(seekTo);
+        });
+      },
+      applyMediaTimeMap(map, seekTo) {
+        mediaSync.batch(() => {
+          mediaSync.setTimeMap(map);
           if (seekTo !== undefined) transport.seek(seekTo);
         });
       },

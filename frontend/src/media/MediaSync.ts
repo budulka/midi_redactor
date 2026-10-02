@@ -1,7 +1,9 @@
 import {
   IDENTITY_MEDIA_TIME_MAP,
+  mediaSegmentAt,
   mediaTimelineEnd,
   mediaToTimeline,
+  nextCutPoint,
   sameMediaTimeMap,
   timelineToMedia,
   type MediaTimeMap,
@@ -50,7 +52,12 @@ export interface MediaSyncOptions {
   readonly startTimer?: (callback: () => void, intervalMs: number) => () => void;
   /** Seconds; default performance.now() / 1000. */
   readonly now?: () => number;
+  /** One-shot timer; returns the function that cancels it. Default: window.setTimeout / clearTimeout. */
+  readonly startTimeout?: (callback: () => void, delayMs: number) => () => void;
 }
+
+/** The check at a cut point happens this long after it, when the target is already past the cut. */
+export const CUT_CHECK_DELAY_MS = 2;
 
 interface TrackEntry {
   readonly track: SyncedMediaTrack;
@@ -64,23 +71,32 @@ const defaultStartTimer = (callback: () => void, intervalMs: number): (() => voi
   return () => window.clearInterval(id);
 };
 
+const defaultStartTimeout = (callback: () => void, delayMs: number): (() => void) => {
+  const id = window.setTimeout(callback, delayMs);
+  return () => window.clearTimeout(id);
+};
+
 const defaultNow = (): number => performance.now() / 1000;
 
 /**
  * Keeps media tracks at the position, the status and the rate of the clock. The clock is the
  * master: paused media shows the frame at the clock position, playing media is pulled towards it
  * (see planMediaSync), and a seek made by the user in a media track moves the clock. Media time
- * maps onto the timeline through a MediaTimeMap (the media offset: the media second at bar 1).
+ * maps onto the timeline through a MediaTimeMap (the media offset, the media second at bar 1, and
+ * the cut ranges of the media). Playing media jumps over a cut: besides the periodic check, a
+ * one-shot timer checks the media right after the next cut point.
  */
 export class MediaSync {
   private readonly clock: SyncClock;
   private readonly startTimer: (callback: () => void, intervalMs: number) => () => void;
   private readonly now: () => number;
+  private readonly startTimeout: (callback: () => void, delayMs: number) => () => void;
   private readonly entries = new Set<TrackEntry>();
   private readonly listeners = new Set<() => void>();
   private clockSnapshot: SyncClockSnapshot | null = null;
   private unsubscribeClock: (() => void) | null = null;
   private stopTimer: (() => void) | null = null;
+  private stopCutTimer: (() => void) | null = null;
   private mediaDuration = 0;
   private syncing = false;
   private resyncRequested = false;
@@ -90,6 +106,7 @@ export class MediaSync {
     this.clock = clock;
     this.startTimer = options.startTimer ?? defaultStartTimer;
     this.now = options.now ?? defaultNow;
+    this.startTimeout = options.startTimeout ?? defaultStartTimeout;
   }
 
   /** Makes the track follow the clock; returns the function that detaches it. */
@@ -184,6 +201,7 @@ export class MediaSync {
     this.unsubscribeClock = null;
     this.clockSnapshot = null;
     this.updateTimer();
+    this.cancelCutCheck();
   }
 
   private readonly onClockChange = (): void => {
@@ -200,6 +218,7 @@ export class MediaSync {
     }
     this.updateTimer();
     this.syncAll();
+    this.scheduleCutCheck();
   };
 
   private onTrackChange(entry: TrackEntry): void {
@@ -263,7 +282,30 @@ export class MediaSync {
     } finally {
       this.syncing = false;
       this.resyncRequested = false;
+      this.scheduleCutCheck();
     }
+  }
+
+  private cancelCutCheck(): void {
+    this.stopCutTimer?.();
+    this.stopCutTimer = null;
+  }
+
+  /**
+   * The periodic check would be up to SYNC_INTERVAL_MS late at a cut point, and that much of the
+   * cut range would be heard; a one-shot timer checks the media just after the next cut point.
+   */
+  private scheduleCutCheck(): void {
+    this.cancelCutCheck();
+    if (this.entries.size === 0 || this.clockSnapshot === null) return;
+    const { status, rate } = this.clock.getSnapshot();
+    if (status !== 'playing' || !(rate > 0)) return;
+    const position = this.clock.getPosition();
+    const next = nextCutPoint(position, this.timeMap);
+    if (next === null) return;
+    const startDelay = this.clock.getStartDelay?.() ?? 0;
+    const delayMs = ((startDelay + next - position) / rate) * 1000 + CUT_CHECK_DELAY_MS;
+    this.stopCutTimer = this.startTimeout(this.syncAll, Math.max(0, delayMs));
   }
 
   private syncTrack(entry: TrackEntry): void {
@@ -271,15 +313,20 @@ export class MediaSync {
     const { track } = entry;
     const snapshot = track.getSnapshot();
     if (snapshot.status !== 'ready') return;
+    const target = timelineToMedia(this.clock.getPosition(), this.timeMap);
+    const segment = mediaSegmentAt(target, this.timeMap.cuts);
     const { action, state } = planMediaSync(
       {
         transportPlaying: this.clock.getSnapshot().status === 'playing',
-        target: timelineToMedia(this.clock.getPosition(), this.timeMap),
+        target,
         mediaTime: track.getCurrentTime(),
         duration: snapshot.duration,
         mediaPlaying: snapshot.playing,
         now: this.now(),
         startDelay: this.clock.getStartDelay?.() ?? 0,
+        segmentStart: segment.start,
+        segmentEnd: segment.end,
+        nextSegmentStart: segment.nextStart,
       },
       entry.sync,
     );

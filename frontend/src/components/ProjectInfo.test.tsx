@@ -18,6 +18,7 @@ describe('ProjectInfo', () => {
       bpm: 90,
       timeSignature: { numerator: 6, denominator: 8 },
       mediaOffset: 0,
+      mediaCuts: [],
       notes: [
         { id: 'a', pitch: 60, start: 0, duration: 1, velocity: 100 },
         { id: 'b', pitch: 64, start: 1, duration: 1, velocity: 100 },
@@ -38,6 +39,7 @@ describe('ProjectInfo', () => {
       bpm: 120,
       timeSignature: { numerator: 4, denominator: 4 },
       mediaOffset: 0,
+      mediaCuts: [],
       notes: [{ id: 'a', pitch: 60, start: 0, duration: 1, velocity: 100 }],
       pedals: [],
     };

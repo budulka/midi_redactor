@@ -1,8 +1,9 @@
 import type { NoteChange, PedalChange, ProjectAction } from './actions.ts';
 import { clampBpm, normalizeMediaOffset, normalizeNote, normalizePedal } from './normalize.ts';
+import { addCut, normalizeCutRange, removeCut, updateCut } from '../utils/mediaCuts.ts';
 import { pedalsOverlap } from '../utils/pedalIntervals.ts';
 import { rescaleProjectTempo } from '../utils/tempoRescale.ts';
-import type { Note, PedalEvent, Project } from './types.ts';
+import type { MediaCut, Note, PedalEvent, Project } from './types.ts';
 import { validateTimeSignature } from './validation.ts';
 
 function isFiniteNote(note: Note): boolean {
@@ -113,6 +114,10 @@ function withPedals(state: Project, pedals: readonly PedalEvent[]): Project {
   return pedals === state.pedals ? state : { ...state, pedals };
 }
 
+function withMediaCuts(state: Project, mediaCuts: readonly MediaCut[] | null): Project {
+  return mediaCuts === null || mediaCuts === state.mediaCuts ? state : { ...state, mediaCuts };
+}
+
 function assertNever(action: never): never {
   throw new Error(`Unknown project action: ${JSON.stringify(action)}`);
 }
@@ -179,6 +184,18 @@ export function projectReducer(state: Project, action: ProjectAction): Project {
       const mediaOffset = normalizeMediaOffset(action.offset);
       return mediaOffset === state.mediaOffset ? state : { ...state, mediaOffset };
     }
+    case 'project/addMediaCut': {
+      const range = normalizeCutRange(action.cut);
+      if (range === null) return state;
+      return withMediaCuts(state, addCut(state.mediaCuts, { ...range, id: action.cut.id }));
+    }
+    case 'project/updateMediaCut': {
+      const range = normalizeCutRange(action.range);
+      if (range === null) return state;
+      return withMediaCuts(state, updateCut(state.mediaCuts, action.id, range));
+    }
+    case 'project/removeMediaCut':
+      return withMediaCuts(state, removeCut(state.mediaCuts, action.id));
     case 'project/load':
       return action.project;
     case 'project/replace':

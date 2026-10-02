@@ -1,8 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import App from './App.tsx';
 import { loadPianoEngine } from './audio/loadEngine.ts';
-import { createWaveSurferPlayer } from './audio/waveSurferPlayer.ts';
+import { createFakeWaveformViews } from './audio/testing/FakeWaveformView.ts';
+import { createWaveSurferPlayer, createWaveSurferView } from './audio/waveSurferPlayer.ts';
 import { createHtmlVideoPlayer } from './media/htmlVideoPlayer.ts';
+import { createFakeMediaPlayers } from './media/testing/FakeMediaPlayer.ts';
 
 vi.mock('./audio/loadEngine.ts', () => ({ loadPianoEngine: vi.fn() }));
 vi.mock('./audio/waveSurferPlayer.ts', () => ({
@@ -166,5 +168,38 @@ describe('App', () => {
       group.getByRole('button', { name: 'Set bar 1 to the current media position' }),
     ).toBeDisabled();
     expect(await screen.findByText('backend: online')).toBeInTheDocument();
+  });
+
+  it('shades no cuts over the waveform of a ready media without cuts', async () => {
+    const players = createFakeMediaPlayers();
+    vi.mocked(createWaveSurferPlayer).mockImplementation(players.create);
+    vi.mocked(createWaveSurferView).mockImplementation(createFakeWaveformViews().create);
+    vi.spyOn(HTMLMediaElement.prototype, 'canPlayType').mockReturnValue('probably');
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = vi.fn(() => 'blob:test');
+    URL.revokeObjectURL = vi.fn();
+    try {
+      render(<App />);
+      const region = screen.getByRole('region', { name: 'Audio track' });
+      expect(region.querySelector('.media-cuts-overlay')).toBeNull();
+      fireEvent.change(within(region).getByLabelText('Audio file'), {
+        target: { files: [new File(['x'], 'song.mp3', { type: 'audio/mpeg' })] },
+      });
+      const player = players.players.at(-1);
+      if (player === undefined) throw new Error('no player');
+      act(() => player.emitReady(30));
+      const overlay = region.querySelector('.media-cuts-overlay');
+      expect(overlay).not.toBeNull();
+      expect(overlay?.children).toHaveLength(0);
+      expect(await screen.findByText('backend: online')).toBeInTheDocument();
+    } finally {
+      cleanup();
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+      vi.mocked(createWaveSurferPlayer).mockReset();
+      vi.mocked(createWaveSurferView).mockReset();
+      vi.restoreAllMocks();
+    }
   });
 });

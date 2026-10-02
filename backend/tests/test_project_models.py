@@ -6,7 +6,16 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from app.models.project import MIN_PEDAL_DURATION, Note, PedalEvent, Project, TimeSignature
+from app.models.project import (
+    MAX_MEDIA_CUTS,
+    MIN_MEDIA_CUT_SECONDS,
+    MIN_PEDAL_DURATION,
+    MediaCut,
+    Note,
+    PedalEvent,
+    Project,
+    TimeSignature,
+)
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sample_project.json"
 
@@ -219,3 +228,60 @@ def test_invalid_media_offset_is_rejected(offset: float) -> None:
 
 def test_media_offset_accepts_the_field_name() -> None:
     assert Project.model_validate(project_data(media_offset=1)).media_offset == 1.0
+
+
+def cut_data(cut_id: str, start: float, end: float) -> dict[str, Any]:
+    return {"id": cut_id, "start": start, "end": end}
+
+
+def test_media_cuts_default_to_empty() -> None:
+    data = project_data()
+    data.pop("mediaCuts")
+
+    assert Project.model_validate(data).media_cuts == []
+
+
+def test_media_cuts_are_read_and_dumped_as_camel_case() -> None:
+    project = Project.model_validate(project_data(mediaCuts=[cut_data("c1", 2, 5)]))
+
+    assert project.media_cuts == [MediaCut(id="c1", start=2, end=5)]
+    assert project.model_dump(by_alias=True)["mediaCuts"] == [
+        {"id": "c1", "start": 2.0, "end": 5.0}
+    ]
+
+
+@pytest.mark.parametrize(
+    "cuts",
+    [
+        [cut_data("c1", 2, 2.005)],
+        [cut_data("c1", -1, 3)],
+        [cut_data("c1", 2, 90000)],
+        [cut_data("c1", float("nan"), 3)],
+        [cut_data("c1", 2, float("nan"))],
+        [cut_data("c1", 2, 3), cut_data("c1", 4, 5)],
+        [cut_data("a", 5, 8), cut_data("b", 2, 3)],
+        [cut_data("a", 2, 5), cut_data("b", 4, 6)],
+    ],
+)
+def test_invalid_media_cuts_are_rejected(cuts: list[dict[str, Any]]) -> None:
+    with pytest.raises(ValidationError):
+        Project.model_validate(project_data(mediaCuts=cuts))
+
+
+def test_media_cut_min_length_is_accepted() -> None:
+    cut = MediaCut(id="c", start=2, end=2 + MIN_MEDIA_CUT_SECONDS)
+
+    assert cut.end == pytest.approx(2.01)
+
+
+def test_touching_media_cuts_are_accepted() -> None:
+    cuts = [cut_data("a", 2, 5), cut_data("b", 5, 6)]
+
+    assert len(Project.model_validate(project_data(mediaCuts=cuts)).media_cuts) == 2
+
+
+def test_too_many_media_cuts_are_rejected() -> None:
+    cuts = [cut_data(f"c{index}", index, index + 0.5) for index in range(MAX_MEDIA_CUTS + 1)]
+
+    with pytest.raises(ValidationError):
+        Project.model_validate(project_data(mediaCuts=cuts))

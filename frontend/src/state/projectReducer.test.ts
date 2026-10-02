@@ -1,16 +1,19 @@
 import * as idModule from '../utils/id.ts';
 import {
+  addMediaCut,
   addNote,
   addNotes,
   addPedal,
   addPedals,
   loadProject,
   replaceProject,
+  removeMediaCut,
   removeNotes,
   removePedals,
   setBpm,
   setMediaOffset,
   setTimeSignature,
+  updateMediaCut,
   updateNote,
   updateNotes,
   updatePedal,
@@ -39,6 +42,7 @@ function makeState(overrides: Partial<Project> = {}): Project {
     bpm: 120,
     timeSignature: { numerator: 4, denominator: 4 },
     mediaOffset: 0,
+    mediaCuts: [],
     notes: [n1, n2, n3],
     pedals: [sustain, soft],
     ...overrides,
@@ -449,5 +453,70 @@ describe('project/setMediaOffset', () => {
     const next = projectReducer(makeState({ mediaOffset: 3.2 }), setBpm(60));
     expect(next.mediaOffset).toBe(3.2);
     expect(next.notes.find((note) => note.id === 'n3')?.start).toBe(2);
+  });
+});
+
+describe('media cuts', () => {
+  it('adds a cut and keeps the notes, pedals and offset', () => {
+    const state = makeState({ mediaOffset: 1 });
+    const next = projectReducer(state, addMediaCut({ start: 2, end: 5 }));
+    expect(next.mediaCuts).toEqual([{ id: expect.any(String), start: 2, end: 5 }]);
+    expect(next.notes).toBe(state.notes);
+    expect(next.pedals).toBe(state.pedals);
+    expect(next.mediaOffset).toBe(1);
+  });
+
+  it('merges an overlapping cut', () => {
+    let state = projectReducer(makeState(), addMediaCut({ start: 2, end: 5 }));
+    state = projectReducer(state, addMediaCut({ start: 4, end: 7 }));
+    expect(state.mediaCuts).toEqual([{ id: expect.any(String), start: 2, end: 7 }]);
+  });
+
+  it('ignores an invalid cut or one inside an existing cut', () => {
+    const state = makeState({ mediaCuts: [{ id: 'c', start: 2, end: 5 }] });
+    expect(projectReducer(state, addMediaCut({ start: 2, end: 2.005 }))).toBe(state);
+    expect(projectReducer(state, addMediaCut({ start: NaN, end: 3 }))).toBe(state);
+    expect(projectReducer(state, addMediaCut({ start: 3, end: 4 }))).toBe(state);
+  });
+
+  it('moves the edges of a cut', () => {
+    const state = makeState({
+      mediaCuts: [
+        { id: 'c', start: 2, end: 5 },
+        { id: 'd', start: 8, end: 9 },
+      ],
+    });
+    const next = projectReducer(state, updateMediaCut('c', { start: 2, end: 6 }));
+    expect(next.mediaCuts[0]).toEqual({ id: 'c', start: 2, end: 6 });
+    expect(next.notes).toBe(state.notes);
+    expect(projectReducer(state, updateMediaCut('c', { start: 2, end: 8.5 }))).toBe(state);
+    expect(projectReducer(state, updateMediaCut('x', { start: 2, end: 6 }))).toBe(state);
+    expect(projectReducer(state, updateMediaCut('c', { start: 2, end: 5 }))).toBe(state);
+  });
+
+  it('removes a cut', () => {
+    const state = makeState({ mediaCuts: [{ id: 'c', start: 2, end: 5 }] });
+    expect(projectReducer(state, removeMediaCut('c')).mediaCuts).toEqual([]);
+    expect(projectReducer(state, removeMediaCut('x'))).toBe(state);
+  });
+
+  it('keeps the cuts when the tempo changes', () => {
+    const mediaCuts = [{ id: 'c', start: 2, end: 5 }];
+    const next = projectReducer(makeState({ mediaCuts }), setBpm(60));
+    expect(next.mediaCuts).toBe(mediaCuts);
+  });
+
+  it('builds the actions', () => {
+    vi.spyOn(idModule, 'createId').mockReturnValue('cut1');
+    expect(addMediaCut({ start: 1, end: 2 })).toEqual({
+      type: 'project/addMediaCut',
+      cut: { id: 'cut1', start: 1, end: 2 },
+    });
+    expect(updateMediaCut('c', { start: 1, end: 2 })).toEqual({
+      type: 'project/updateMediaCut',
+      id: 'c',
+      range: { start: 1, end: 2 },
+    });
+    expect(removeMediaCut('c')).toEqual({ type: 'project/removeMediaCut', id: 'c' });
   });
 });

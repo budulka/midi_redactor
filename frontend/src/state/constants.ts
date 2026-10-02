@@ -15,6 +15,12 @@ export const MIN_MEDIA_OFFSET = -3600;
 export const MAX_MEDIA_OFFSET = 3600;
 /** The media offset is kept to the millisecond. */
 export const MEDIA_OFFSET_STEP = 0.001;
+/** Shortest media cut, seconds. */
+export const MIN_MEDIA_CUT_SECONDS = 0.01;
+/** Latest end of a media cut (one day), seconds: a safe bound for any media file. */
+export const MAX_MEDIA_CUT_END = 86400;
+/** Most media cuts a project may have. */
+export const MAX_MEDIA_CUTS = 1000;
 
 export const PEDAL_TYPES: readonly PedalType[] = ['sustain', 'sostenuto', 'soft'];
 export const ALLOWED_DENOMINATORS: readonly number[] = [1, 2, 4, 8, 16, 32];
@@ -27,6 +33,7 @@ export function createEmptyProject(): Project {
     bpm: DEFAULT_BPM,
     timeSignature: DEFAULT_TIME_SIGNATURE,
     mediaOffset: 0,
+    mediaCuts: [],
     notes: [],
     pedals: [],
   };

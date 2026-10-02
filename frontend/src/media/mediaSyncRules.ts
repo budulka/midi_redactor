@@ -67,6 +67,12 @@ export interface MediaSyncInput {
    * that much less ahead, so the drift measured after it keeps estimating the seek latency alone.
    */
   readonly startDelay?: number;
+  /** Media second where the playing segment that contains target starts (end of the previous cut); default -Infinity. */
+  readonly segmentStart?: number;
+  /** Media second where that segment ends (start of the next cut); default Infinity. */
+  readonly segmentEnd?: number;
+  /** Media second where playback continues after that cut (its end); default Infinity. */
+  readonly nextSegmentStart?: number;
 }
 
 export interface MediaSyncAction {
@@ -102,6 +108,20 @@ export function nudgeFactor(drift: number, currentNudge: number): number {
 
 const NO_ACTION: MediaSyncAction = { seekTo: null, play: false, pause: false, nudge: 1 };
 
+/**
+ * Media second `lead` timeline seconds after target, crossing at most the next cut; clamped to
+ * [max(0, segmentStart), duration − END_GUARD_SECONDS]. A negative lead never goes back across
+ * the previous cut.
+ */
+export function mediaAhead(target: number, lead: number, input: MediaSyncInput): number {
+  const segmentStart = input.segmentStart ?? -Infinity;
+  const segmentEnd = input.segmentEnd ?? Infinity;
+  const nextSegmentStart = input.nextSegmentStart ?? Infinity;
+  const ahead = target + lead;
+  const media = ahead < segmentEnd ? ahead : nextSegmentStart + (ahead - segmentEnd);
+  return clamp(media, Math.max(0, segmentStart), input.duration - END_GUARD_SECONDS);
+}
+
 /** Decides how to bring one media track to the transport position. */
 export function planMediaSync(input: MediaSyncInput, state: TrackSyncState): MediaSyncPlan {
   const { transportPlaying, target, mediaTime, duration, mediaPlaying, now } = input;
@@ -130,15 +150,34 @@ export function planMediaSync(input: MediaSyncInput, state: TrackSyncState): Med
     return withNudge({ ...NO_ACTION, pause: mediaPlaying });
   }
 
+  const segmentStart = input.segmentStart ?? -Infinity;
+  const segmentEnd = input.segmentEnd ?? Infinity;
+  const nextSegmentStart = input.nextSegmentStart ?? Infinity;
+
+  // The next cut runs to the end of the file: the media stops at the cut and plays none of it.
+  const tailCut =
+    nextSegmentStart >= duration - END_GUARD_SECONDS &&
+    (target >= segmentEnd - END_GUARD_SECONDS ||
+      (mediaTime >= segmentEnd - SEEK_EPSILON_SECONDS &&
+        target >= segmentEnd - HARD_SEEK_DRIFT_SECONDS));
+  if (tailCut) {
+    // A seek into the last moments before the cut moves the paused media there.
+    const seekTo =
+      Math.abs(mediaTime - target) > HARD_SEEK_DRIFT_SECONDS ? Math.min(target, segmentEnd) : null;
+    return withNudge(
+      { seekTo, play: false, pause: mediaPlaying, nudge: 1 },
+      { ...state, playRequested: false },
+    );
+  }
+
   const ended = !mediaPlaying && mediaTime >= duration - SEEK_EPSILON_SECONDS;
   const inTail =
     target >= duration - END_GUARD_SECONDS ||
     (ended && target >= duration - HARD_SEEK_DRIFT_SECONDS);
   if (inTail) return withNudge(NO_ACTION);
 
-  const drift = mediaTime - target;
-
   if (!mediaPlaying) {
+    const drift = mediaTime - target;
     if (state.playRequested) return withNudge(NO_ACTION);
     const seekTo = Math.abs(drift) > NUDGE_START_SECONDS ? target : null;
     return withNudge(
@@ -146,6 +185,35 @@ export function planMediaSync(input: MediaSyncInput, state: TrackSyncState): Med
       { ...state, playRequested: true, lastSeekAt: seekTo === null ? state.lastSeekAt : now },
     );
   }
+
+  // Jumps over a cut are not drift corrections: they ignore the cooldown and the seek streak.
+  const jump = (seekTo: number): MediaSyncPlan =>
+    withNudge({ ...NO_ACTION, seekTo }, { ...state, lastSeekAt: now, checkAfterSeek: false });
+  if (mediaTime < segmentStart - SEEK_EPSILON_SECONDS) {
+    // The timeline has passed a cut point and the media is still before the cut.
+    return jump(mediaAhead(target, state.seekLead, input));
+  }
+  if (
+    mediaTime >= segmentEnd - SEEK_EPSILON_SECONDS &&
+    mediaTime < nextSegmentStart &&
+    target >= segmentEnd - HARD_SEEK_DRIFT_SECONDS
+  ) {
+    // The media is a little ahead of the timeline and has entered the next cut: it jumps over it
+    // keeping its lead.
+    return jump(
+      Math.min(
+        nextSegmentStart + Math.max(0, mediaTime - segmentEnd),
+        duration - END_GUARD_SECONDS,
+      ),
+    );
+  }
+  // The media is already past the next cut (right after a jump) while target is still before it:
+  // the drift is measured on the timeline, without the cut range.
+  const pastNextCut = mediaTime >= nextSegmentStart;
+  const drift = pastNextCut
+    ? mediaTime - nextSegmentStart + (segmentEnd - target)
+    : mediaTime - target;
+  if (pastNextCut && drift <= HARD_SEEK_DRIFT_SECONDS) return withNudge(NO_ACTION);
 
   const cooldown = now - state.lastSeekAt < SEEK_COOLDOWN_SECONDS;
   let next = state;
@@ -162,7 +230,7 @@ export function planMediaSync(input: MediaSyncInput, state: TrackSyncState): Med
 
   if (Math.abs(drift) > HARD_SEEK_DRIFT_SECONDS && next.seekStreak < MAX_CORRECTION_SEEKS) {
     const lead = next.seekLead - (input.startDelay ?? 0);
-    const seekTo = clamp(target + lead, 0, duration - END_GUARD_SECONDS);
+    const seekTo = mediaAhead(target, lead, input);
     return withNudge(
       { ...NO_ACTION, seekTo },
       { ...next, lastSeekAt: now, checkAfterSeek: true, seekStreak: next.seekStreak + 1 },

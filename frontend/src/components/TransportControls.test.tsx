@@ -14,6 +14,7 @@ const project: Project = {
   bpm: 120,
   timeSignature: { numerator: 4, denominator: 4 },
   mediaOffset: 0,
+  mediaCuts: [],
   notes: [{ id: 'a', pitch: 60, start: 0, duration: 0.5, velocity: 100 }],
   pedals: [],
 };
