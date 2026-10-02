@@ -5,6 +5,7 @@ import ExportButton from './components/ExportButton.tsx';
 import ImportButton from './components/ImportButton.tsx';
 import KeyboardShortcuts from './components/KeyboardShortcuts.tsx';
 import MediaOffsetControls from './components/MediaOffsetControls.tsx';
+import MediaTimeline from './components/MediaTimeline.tsx';
 import MediaOffsetMarker from './components/MediaOffsetMarker.tsx';
 import ProjectInfo from './components/ProjectInfo.tsx';
 import PianoRoll from './components/PianoRoll/PianoRoll.tsx';
@@ -43,7 +44,7 @@ export default function App() {
                     <BackendStatus />
                   </>
                 }
-                editor={<PianoRoll />}
+                editor={<PianoRoll mediaTimeline={(geometry) => <MediaTimeline {...geometry} />} />}
                 media={
                   <>
                     <section className="app__video" aria-label="Video">

@@ -72,7 +72,7 @@ describe('App', () => {
     const playback = within(video.getByRole('group', { name: 'Video playback' }));
     expect(playback.getByRole('status', { name: 'Video position' })).toBeInTheDocument();
     expect(playback.getByRole('checkbox', { name: 'Mute video' })).toBeInTheDocument();
-    expect(video.getByRole('slider', { name: 'Seek video' })).toBeInTheDocument();
+    expect(video.queryByRole('slider', { name: 'Seek video' })).toBeNull();
     expect(createHtmlVideoPlayer).not.toHaveBeenCalled();
     expect(await screen.findByText('backend: online')).toBeInTheDocument();
   });
@@ -91,7 +91,7 @@ describe('App', () => {
     }
     const video = within(screen.getByRole('region', { name: 'Video' }));
     expect(video.getByRole('checkbox', { name: 'Mute video' })).toBeInTheDocument();
-    expect(video.getByRole('slider', { name: 'Seek video' })).toBeInTheDocument();
+    expect(video.queryByRole('slider', { name: 'Seek video' })).toBeNull();
     expect(createWaveSurferPlayer).not.toHaveBeenCalled();
     expect(createHtmlVideoPlayer).not.toHaveBeenCalled();
     expect(loadPianoEngine).not.toHaveBeenCalled();
@@ -113,6 +113,14 @@ describe('App', () => {
     const pianoRoll = within(screen.getByRole('region', { name: 'Piano roll' }));
     expect(pianoRoll.getByRole('button', { name: 'Undo' })).toBeDisabled();
     expect(pianoRoll.getByRole('button', { name: 'Redo' })).toBeDisabled();
+    expect(await screen.findByText('backend: online')).toBeInTheDocument();
+  });
+
+  it('shows the media timeline above the piano roll', async () => {
+    render(<App />);
+    const pianoRoll = within(screen.getByRole('region', { name: 'Piano roll' }));
+    const timeline = within(pianoRoll.getByRole('group', { name: 'Media timeline' }));
+    expect(timeline.getByRole('slider', { name: 'Media position' })).toBeInTheDocument();
     expect(await screen.findByText('backend: online')).toBeInTheDocument();
   });
 

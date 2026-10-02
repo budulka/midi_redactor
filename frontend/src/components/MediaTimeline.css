@@ -1,0 +1,47 @@
+.media-timeline {
+  position: relative;
+  height: 100%;
+}
+
+.media-timeline__track {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  outline: none;
+}
+
+.media-timeline__track[aria-disabled='true'] {
+  cursor: default;
+}
+
+.media-timeline__track:focus-visible:not([data-pointer-focus]) {
+  outline: 1px solid var(--note-selected);
+  outline-offset: -1px;
+}
+
+.media-timeline__media {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  border-radius: 3px;
+  background: var(--media-band, #3b6ea5);
+  pointer-events: none;
+}
+
+.media-timeline__intro,
+.media-timeline__placeholder {
+  position: sticky;
+  /* Sticks right after the sticky keyboard column, which covers the left 72 px of the scroller. */
+  left: 72px;
+  display: inline-block;
+  padding: 0 6px;
+  line-height: 28px;
+  font-size: 11px;
+  color: var(--muted);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.media-timeline__intro {
+  color: var(--text);
+}

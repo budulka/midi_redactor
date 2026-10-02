@@ -103,15 +103,13 @@ describe('MediaSyncBridge', () => {
     expect(audio.calls).toContain('setPlaybackRate:0.5');
   });
 
-  it('seeks the whole timeline with the video slider', () => {
+  it('seeks the whole timeline with the video skip buttons', () => {
     const { video, audio, clearCalls } = setup();
     clearCalls();
-    fireEvent.change(screen.getByRole('slider', { name: 'Seek video' }), {
-      target: { value: '30' },
-    });
-    expect(transportPosition().textContent?.startsWith('0:30.000')).toBe(true);
-    expect(video.calls.filter((call) => call.startsWith('setTime:'))).toEqual(['setTime:30']);
-    expect(audio.calls.filter((call) => call.startsWith('setTime:'))).toEqual(['setTime:30']);
+    fireEvent.click(screen.getByRole('button', { name: 'Forward 5 seconds' }));
+    expect(transportPosition().textContent?.startsWith('0:05.000')).toBe(true);
+    expect(video.calls.filter((call) => call.startsWith('setTime:'))).toEqual(['setTime:5']);
+    expect(audio.calls.filter((call) => call.startsWith('setTime:'))).toEqual(['setTime:5']);
   });
 
   it('seeks the whole timeline with a click on the waveform', () => {

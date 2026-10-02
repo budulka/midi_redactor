@@ -26,7 +26,6 @@ function setup() {
 
 const fileInput = () => screen.getByLabelText<HTMLInputElement>('Video file');
 const position = () => screen.getByRole('status', { name: 'Video position' });
-const slider = () => screen.getByRole<HTMLInputElement>('slider', { name: 'Seek video' });
 const button = (name: string) => screen.getByRole('button', { name });
 
 function choose(name: string, type: string) {
@@ -64,7 +63,7 @@ describe('VideoPlayer', () => {
     for (const name of ['Back 5 seconds', 'Forward 5 seconds', 'Remove video']) {
       expect(button(name)).toBeDisabled();
     }
-    expect(slider()).toBeDisabled();
+    expect(screen.queryByRole('slider', { name: 'Seek video' })).toBeNull();
     expect(screen.queryByRole('combobox', { name: 'Video speed' })).toBeNull();
     expect(position()).toHaveTextContent('0:00.000 / 0:00.000');
   });
@@ -85,26 +84,7 @@ describe('VideoPlayer', () => {
       expect(button(name)).toBeEnabled();
     }
     expect(screen.queryByRole('combobox', { name: 'Video speed' })).toBeNull();
-    expect(slider()).toBeEnabled();
-    expect(slider()).toHaveAttribute('max', '65');
-    expect(slider().value).toBe('0');
-  });
-
-  it('lets the slider reach the end of a duration that is not a multiple of the step', () => {
-    const { player } = setup();
-    const ready = loadReady(player, 12.345);
-    expect(slider()).toHaveAttribute('max', '12.4');
-    act(() => ready.emitFinish());
-    expect(slider().value).toBe('12.4');
-    expect(position()).toHaveTextContent('0:12.345 / 0:12.345');
-  });
-
-  it('seeks with the slider', () => {
-    const { player } = setup();
-    const ready = loadReady(player);
-    fireEvent.change(slider(), { target: { value: '30' } });
-    expect(ready.calls).toContain('setTime:30');
-    expect(position()).toHaveTextContent('0:30.000 / 1:05.000');
+    expect(screen.queryByRole('slider', { name: 'Seek video' })).toBeNull();
   });
 
   it('skips back and forward within the video', () => {
@@ -129,7 +109,6 @@ describe('VideoPlayer', () => {
     ready.currentTime = 2.5;
     frames.flushFrame();
     expect(position()).toHaveTextContent('0:02.500 / 1:05.000');
-    expect(slider().value).toBe('2.5');
 
     act(() => ready.emitPause());
     expect(frames.cancelAnimationFrame).toHaveBeenCalled();

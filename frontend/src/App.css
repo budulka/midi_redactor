@@ -514,11 +514,6 @@ body {
   color: var(--text);
 }
 
-.video-player__seek {
-  width: 100%;
-  margin: 0;
-}
-
 .video-player__controls {
   flex-wrap: wrap;
 }
