@@ -28,7 +28,7 @@ const named = (name: string, extra: Partial<KeyLike> = {}) =>
   key({ key: name, code: name, ...extra });
 const letterA = key({ key: 'a', code: 'KeyA' });
 
-describe('shortcutFor noteGrid (was editorShortcutFor)', () => {
+describe('shortcutFor noteGrid', () => {
   it('matches select all by code', () => {
     expect(shortcutFor('noteGrid', key({ key: 'a', code: 'KeyA', ctrlKey: true }))).toBe(
       'selectAll',

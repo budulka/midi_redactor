@@ -1,4 +1,5 @@
 import { normalizeMediaOffset } from '../state/normalize.ts';
+import { stepOf, type SeekAction } from './keyActions.ts';
 import { formatClock } from './transportFormat.ts';
 
 /** Arrow keys on the bar 1 marker move the offset by this much, seconds. */
@@ -28,30 +29,16 @@ export function offsetFromPointer(x: number, width: number, duration: number): n
   return normalizeMediaOffset(clamp(x / width, 0, 1) * duration);
 }
 
-/** New offset for a key on the marker, clamped to [0, duration] and rounded to 1 ms; null for other keys. */
-export function offsetForKey(
-  offset: number,
-  key: string,
-  shiftKey: boolean,
-  duration: number,
-): number | null {
-  const step = shiftKey ? OFFSET_KEY_BIG_STEP_SECONDS : OFFSET_KEY_STEP_SECONDS;
+/** New offset for a key action on the marker, clamped to [0, duration] and rounded to 1 ms. */
+export function offsetForAction(offset: number, action: SeekAction, duration: number): number {
   let next: number;
-  switch (key) {
-    case 'ArrowLeft':
-      next = offset - step;
-      break;
-    case 'ArrowRight':
-      next = offset + step;
-      break;
-    case 'Home':
-      next = 0;
-      break;
-    case 'End':
-      next = duration;
-      break;
-    default:
-      return null;
+  if (action === 'toStart') {
+    next = 0;
+  } else if (action === 'toEnd') {
+    next = duration;
+  } else {
+    const { sign, big } = stepOf(action);
+    next = offset + sign * (big ? OFFSET_KEY_BIG_STEP_SECONDS : OFFSET_KEY_STEP_SECONDS);
   }
   return normalizeMediaOffset(clamp(next, 0, Math.max(0, duration)));
 }

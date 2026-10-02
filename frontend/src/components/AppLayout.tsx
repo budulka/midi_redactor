@@ -8,16 +8,18 @@ import {
   type ReactNode,
 } from 'react';
 import { focusFromPointer } from '../utils/focus.ts';
+import type { SplitterAction } from '../utils/keyActions.ts';
+import { handleShortcut } from '../utils/shortcutRegistry.ts';
 import {
   browserStorage,
   clampMediaPanelWidth,
   dragMediaPanelWidth,
-  keyboardMediaPanelWidth,
   loadMediaPanelWidth,
   maxMediaPanelWidth,
   MEDIA_PANEL_DEFAULT_WIDTH_PX,
   MEDIA_PANEL_MIN_WIDTH_PX,
   saveMediaPanelWidth,
+  splitterWidthForAction,
   type WidthStorage,
 } from '../utils/mediaPanelWidth.ts';
 import { useDragGesture } from './PianoRoll/useDragGesture.ts';
@@ -78,10 +80,17 @@ export default function AppLayout({ header, editor, media, storage: storageProp 
   };
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const next = keyboardMediaPanelWidth(event, committed, viewportWidth);
-    if (next === null) return;
-    event.preventDefault();
-    commit(next);
+    const resize = (action: SplitterAction) => {
+      commit(splitterWidthForAction(action, committed, viewportWidth));
+    };
+    handleShortcut('splitter', event, {
+      widen: resize,
+      narrow: resize,
+      widenMore: resize,
+      narrowMore: resize,
+      narrowest: resize,
+      widest: resize,
+    });
   };
 
   const handleDoubleClick = () => {

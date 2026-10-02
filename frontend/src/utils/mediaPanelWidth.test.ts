@@ -2,24 +2,13 @@ import {
   browserStorage,
   clampMediaPanelWidth,
   dragMediaPanelWidth,
-  keyboardMediaPanelWidth,
   loadMediaPanelWidth,
   maxMediaPanelWidth,
   parseStoredMediaPanelWidth,
   saveMediaPanelWidth,
-  SPLITTER_KEYS,
-  type SplitterKey,
+  splitterWidthForAction,
   type WidthStorage,
 } from './mediaPanelWidth.ts';
-
-const key = (name: string, modifiers: Partial<SplitterKey> = {}): SplitterKey => ({
-  key: name,
-  shiftKey: false,
-  ctrlKey: false,
-  metaKey: false,
-  altKey: false,
-  ...modifiers,
-});
 
 function fakeStorage(getItem: () => string | null): WidthStorage & {
   getItem: ReturnType<typeof vi.fn>;
@@ -65,54 +54,25 @@ describe('dragMediaPanelWidth', () => {
   });
 });
 
-describe('keyboardMediaPanelWidth', () => {
+describe('splitterWidthForAction', () => {
   it.each([
-    [key('ArrowLeft'), 376],
-    [key('ArrowRight'), 344],
-    [key('ArrowLeft', { shiftKey: true }), 424],
-    [key('ArrowRight', { shiftKey: true }), 296],
-    [key('Home'), 240],
-    [key('End'), 960],
-  ])('maps %o to %i', (event, expected) => {
-    expect(keyboardMediaPanelWidth(event, 360, 1440)).toBe(expected);
+    ['widen', 376],
+    ['narrow', 344],
+    ['widenMore', 424],
+    ['narrowMore', 296],
+    ['narrowest', 240],
+    ['widest', 960],
+  ] as const)('maps %s to %i', (action, expected) => {
+    expect(splitterWidthForAction(action, 360, 1440)).toBe(expected);
   });
 
-  it('limits End by the window width', () => {
-    expect(keyboardMediaPanelWidth(key('End'), 360, 1024)).toBe(544);
+  it('limits widest by the window width', () => {
+    expect(splitterWidthForAction('widest', 360, 1024)).toBe(544);
   });
 
   it('stops at the limits', () => {
-    expect(keyboardMediaPanelWidth(key('ArrowLeft'), 960, 1440)).toBe(960);
-    expect(keyboardMediaPanelWidth(key('ArrowRight'), 240, 1440)).toBe(240);
-  });
-
-  it.each(['ArrowUp', 'ArrowDown', 'a', 'Enter', 'Tab'])('ignores %s', (name) => {
-    expect(keyboardMediaPanelWidth(key(name), 360, 1440)).toBeNull();
-  });
-
-  it.each([{ ctrlKey: true }, { metaKey: true }, { altKey: true }])(
-    'ignores ArrowLeft with %o',
-    (modifiers) => {
-      expect(keyboardMediaPanelWidth(key('ArrowLeft', modifiers), 360, 1440)).toBeNull();
-    },
-  );
-});
-
-describe('SPLITTER_KEYS', () => {
-  it('lists the arrows, Home and End with descriptions', () => {
-    expect(SPLITTER_KEYS.map((entry) => entry.key)).toEqual([
-      'ArrowLeft',
-      'ArrowRight',
-      'Home',
-      'End',
-    ]);
-    for (const entry of SPLITTER_KEYS) expect(entry.description).not.toBe('');
-  });
-
-  it('matches the keys the handler reacts to', () => {
-    for (const entry of SPLITTER_KEYS) {
-      expect(keyboardMediaPanelWidth(key(entry.key), 360, 1440)).toEqual(expect.any(Number));
-    }
+    expect(splitterWidthForAction('widen', 960, 1440)).toBe(960);
+    expect(splitterWidthForAction('narrow', 240, 1440)).toBe(240);
   });
 });
 

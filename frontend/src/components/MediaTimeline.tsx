@@ -14,7 +14,7 @@ import { useMediaTimeMap } from '../state/useMediaTimeMap.ts';
 import { focusFromPointer } from '../utils/focus.ts';
 import {
   cutDescription,
-  cutEdgeForKey,
+  cutEdgeForAction,
   cutEdgeLimits,
   cutRangeForSelection,
   draggedCutEdge,
@@ -27,10 +27,12 @@ import {
   mediaPositionText,
   mediaTimelineExtent,
   selectionLabel,
-  timelineSeekForKey,
+  timelineSeekForAction,
   type TimelineExtent,
 } from '../utils/mediaTimeline.ts';
 import { timeToX, xToTime } from '../utils/pianoRollGeometry.ts';
+import type { SeekAction, StepAction } from '../utils/keyActions.ts';
+import { handleShortcut } from '../utils/shortcutRegistry.ts';
 import { formatClock } from '../utils/transportFormat.ts';
 import ContextMenu, { type ContextMenuItem } from './ContextMenu.tsx';
 import type { MediaTimelineGeometry } from './PianoRoll/PianoRoll.tsx';
@@ -197,20 +199,27 @@ export default function MediaTimeline({ durationSeconds, pixelsPerSecond }: Medi
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!ready) return;
-    if (shownSelection !== null && (event.key === 'Delete' || event.key === 'Backspace')) {
-      event.preventDefault();
-      deleteRange();
-      return;
-    }
-    if (shownSelection !== null && event.key === 'Escape') {
-      event.preventDefault();
-      setSelection(null);
-      return;
-    }
-    const value = timelineSeekForKey(position, event.key, event.shiftKey, extent?.end ?? 0);
-    if (value === null) return;
-    event.preventDefault();
-    api.seek(value);
+    const seek = (action: SeekAction) => {
+      const value = timelineSeekForAction(position, action, extent?.end ?? 0);
+      if (value === null) return false;
+      api.seek(value);
+    };
+    handleShortcut('mediaTimeline', event, {
+      cutSelection: () => {
+        if (shownSelection === null) return false;
+        deleteRange();
+      },
+      clearSelection: () => {
+        if (shownSelection === null) return false;
+        setSelection(null);
+      },
+      stepBack: seek,
+      stepForward: seek,
+      bigStepBack: seek,
+      bigStepForward: seek,
+      toStart: seek,
+      toEnd: seek,
+    });
   };
 
   const handleContextMenu = (event: MouseEvent<HTMLDivElement>) => {
@@ -273,17 +282,19 @@ export default function MediaTimeline({ durationSeconds, pixelsPerSecond }: Medi
     cut: MediaCut,
     edge: CutEdge,
   ) => {
-    if (event.key === 'Delete' || event.key === 'Backspace') {
-      event.preventDefault();
-      removeCut(cut.id);
-      return;
-    }
-    const limits = cutEdgeLimits(mediaCuts, cut.id, edge, mediaDuration, timeMap.offset);
-    const value = cutEdgeForKey(cut[edge], event.key, event.shiftKey, limits);
-    if (value === null) return;
-    event.preventDefault();
-    const range = { start: cut.start, end: cut.end, [edge]: value };
-    dispatch(updateMediaCut(cut.id, range));
+    const move = (action: StepAction) => {
+      const limits = cutEdgeLimits(mediaCuts, cut.id, edge, mediaDuration, timeMap.offset);
+      const value = cutEdgeForAction(cut[edge], action, limits);
+      const range = { start: cut.start, end: cut.end, [edge]: value };
+      dispatch(updateMediaCut(cut.id, range));
+    };
+    handleShortcut('cutEdge', event, {
+      removeCut: () => removeCut(cut.id),
+      stepBack: move,
+      stepForward: move,
+      bigStepBack: move,
+      bigStepForward: move,
+    });
   };
 
   let menuItems: ContextMenuItem[] = [];

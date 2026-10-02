@@ -5,6 +5,7 @@ import {
   type MediaTimeMap,
 } from './mediaTimeMap.ts';
 import { MIN_MEDIA_CUT_SECONDS } from '../state/constants.ts';
+import { stepOf, type SeekAction } from './keyActions.ts';
 import { formatClock } from './transportFormat.ts';
 
 /** Arrow keys on the media timeline move the position by this much, seconds. */
@@ -44,33 +45,23 @@ export function hiddenIntroSeconds(map: MediaTimeMap): number {
 }
 
 /**
- * New timeline position for a key on the media timeline, clamped to [0, end] and rounded to 1 ms;
- * null for other keys or end <= 0.
+ * New timeline position for a key action on the media timeline, clamped to [0, end] and rounded
+ * to 1 ms; null when end <= 0.
  */
-export function timelineSeekForKey(
+export function timelineSeekForAction(
   position: number,
-  key: string,
-  shiftKey: boolean,
+  action: SeekAction,
   end: number,
 ): number | null {
   if (!(end > 0)) return null;
-  const step = shiftKey ? TIMELINE_KEY_BIG_STEP_SECONDS : TIMELINE_KEY_STEP_SECONDS;
   let next: number;
-  switch (key) {
-    case 'ArrowLeft':
-      next = position - step;
-      break;
-    case 'ArrowRight':
-      next = position + step;
-      break;
-    case 'Home':
-      next = 0;
-      break;
-    case 'End':
-      next = end;
-      break;
-    default:
-      return null;
+  if (action === 'toStart') {
+    next = 0;
+  } else if (action === 'toEnd') {
+    next = end;
+  } else {
+    const { sign, big } = stepOf(action);
+    next = position + sign * (big ? TIMELINE_KEY_BIG_STEP_SECONDS : TIMELINE_KEY_STEP_SECONDS);
   }
   return roundToMs(clamp(next, 0, end));
 }
