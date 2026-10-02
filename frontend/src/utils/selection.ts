@@ -1,6 +1,9 @@
 import type { Note } from '../state/types.ts';
 import { noteRect, type Point, type Rect, type ViewGeometry } from './pianoRollGeometry.ts';
 
+/** How the Info window names the modifiers of isAdditive. */
+export const ADDITIVE_MODIFIERS_LABEL = 'Shift/Ctrl/⌘';
+
 /** Shift, Ctrl or ⌘ held: the click adds to / removes from the selection. */
 export function isAdditive(event: {
   shiftKey: boolean;

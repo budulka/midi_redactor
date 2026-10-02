@@ -7,6 +7,7 @@ import { clearSelection, selectPedals, selectedPedals } from '../../state/editor
 import { useProject, useProjectDispatch } from '../../state/projectContext.ts';
 import type { PedalEvent } from '../../state/types.ts';
 import { focusFromPointer } from '../../utils/focus.ts';
+import { pedalLaneMouseAction } from '../../utils/mouseActions.ts';
 import { withPreview, type DragOptions } from '../../utils/noteEditing.ts';
 import { defaultPedalLength } from '../../utils/pedalEditing.ts';
 import {
@@ -127,7 +128,7 @@ export default function PedalLane() {
 
   function handleContextMenu(event: MouseEvent<HTMLDivElement>) {
     const hit = hitTestPedals(pedals, getLocalPoint(event), geometry);
-    if (hit === null) return;
+    if (hit === null || pedalLaneMouseAction('right', false, hit.zone) !== 'deletePedal') return;
     event.preventDefault();
     projectDispatch(removePedals([hit.pedalId]));
     if (selectedIds.has(hit.pedalId)) {

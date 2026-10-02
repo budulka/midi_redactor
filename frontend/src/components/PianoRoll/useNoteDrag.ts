@@ -12,6 +12,7 @@ import {
   type DragOptions,
   type DragState,
 } from '../../utils/noteEditing.ts';
+import { noteGridMouseAction } from '../../utils/mouseActions.ts';
 import {
   hitTestNotes,
   xToTime,
@@ -90,39 +91,48 @@ export function useNoteDrag(options: UseNoteDragOptions): UseNoteDragResult {
       const hit = hitTestNotes(notes, point, geometry);
 
       let gesture: NoteGesture;
-      if (hit === null) {
-        if (additive) {
+      const action = noteGridMouseAction('left', additive, hit?.zone ?? null);
+      switch (action) {
+        case 'selectRect':
           gesture = { kind: 'marquee', start: point, base: selectedIds };
-        } else {
+          break;
+        case 'createNote': {
           const note = createNoteAt(createId(), time, pitch, DEFAULT_NOTE_VELOCITY, dragOptions);
           gesture = {
             kind: 'create',
             drag: { kind: 'create', original: note, originTime: time, originPitch: pitch },
           };
+          break;
         }
-      } else {
-        const anchor = notes.find((note) => note.id === hit.noteId);
-        if (anchor === undefined) return;
-        if (additive) {
-          onSelect(toggleId(selectedIds, anchor.id));
+        case 'toggleNote':
+        case 'moveNotes':
+        case 'resizeNotes': {
+          const anchor = notes.find((note) => note.id === hit?.noteId);
+          if (anchor === undefined) return;
+          if (action === 'toggleNote') {
+            onSelect(toggleId(selectedIds, anchor.id));
+            return;
+          }
+          let originals: readonly Note[] = [anchor];
+          if (selectedIds.includes(anchor.id)) {
+            originals = selectedNotes(notes, selectedIds);
+          } else {
+            onSelect([anchor.id]);
+          }
+          gesture = {
+            kind: 'group',
+            drag: {
+              kind: action === 'resizeNotes' ? 'resize' : 'move',
+              anchor,
+              originals,
+              originTime: time,
+              originPitch: pitch,
+            },
+          };
+          break;
+        }
+        default:
           return;
-        }
-        let originals: readonly Note[] = [anchor];
-        if (selectedIds.includes(anchor.id)) {
-          originals = selectedNotes(notes, selectedIds);
-        } else {
-          onSelect([anchor.id]);
-        }
-        gesture = {
-          kind: 'group',
-          drag: {
-            kind: hit.zone === 'resize' ? 'resize' : 'move',
-            anchor,
-            originals,
-            originTime: time,
-            originPitch: pitch,
-          },
-        };
       }
 
       begin({

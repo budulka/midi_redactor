@@ -8,6 +8,7 @@ import type { Note } from '../../state/types.ts';
 import { focusFromPointer } from '../../utils/focus.ts';
 import { translateNotes, withPreviews } from '../../utils/groupEditing.ts';
 import type { DragOptions } from '../../utils/noteEditing.ts';
+import { noteGridMouseAction } from '../../utils/mouseActions.ts';
 import { noteSoundingEnds } from '../../utils/pedalEffects.ts';
 import {
   ROW_HEIGHT_PX,
@@ -156,7 +157,7 @@ export default function NoteGrid() {
 
   function handleContextMenu(event: MouseEvent<HTMLDivElement>) {
     const hit = hitTestNotes(notes, getLocalPoint(event), geometry);
-    if (hit === null) return;
+    if (hit === null || noteGridMouseAction('right', false, hit.zone) !== 'deleteNote') return;
     event.preventDefault();
     projectDispatch(removeNotes([hit.noteId]));
     if (selectedIds.has(hit.noteId)) {
