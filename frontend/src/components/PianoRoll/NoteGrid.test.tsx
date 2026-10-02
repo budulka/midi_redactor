@@ -24,6 +24,7 @@ function renderGrid(notes: Note[] = [], editor?: Partial<EditorState>, pedals: P
     bpm: 120,
     timeSignature: { numerator: 4, denominator: 4 },
     mediaOffset: 0,
+    mediaCuts: [],
     notes,
     pedals,
   };
@@ -266,6 +267,7 @@ describe('NoteGrid', () => {
       bpm: 120,
       timeSignature: { numerator: 4, denominator: 4 },
       mediaOffset: 0,
+      mediaCuts: [],
       notes: [],
       pedals: [],
     };

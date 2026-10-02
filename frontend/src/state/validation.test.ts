@@ -3,6 +3,7 @@ import type { Note, PedalEvent, Project } from './types.ts';
 import {
   ProjectParseError,
   parseProject,
+  validateMediaCut,
   validateMediaOffset,
   validateNote,
   validatePedal,
@@ -16,6 +17,7 @@ const project: Project = {
   bpm: 120,
   timeSignature: { numerator: 4, denominator: 4 },
   mediaOffset: 0,
+  mediaCuts: [],
   notes: [note],
   pedals: [pedal],
 };
@@ -237,5 +239,109 @@ describe('media offset', () => {
 
   it('keeps the media offset of a valid project', () => {
     expect(parseProject({ ...sample, mediaOffset: -1.5 }).mediaOffset).toBe(-1.5);
+  });
+});
+
+describe('media cuts', () => {
+  const cut = { id: 'c1', start: 2, end: 5 };
+
+  it('accepts a valid cut', () => {
+    expect(validateMediaCut(cut)).toEqual([]);
+    expect(validateMediaCut({ id: 'c', start: 0, end: 0.01 })).toEqual([]);
+  });
+
+  it.each([
+    [{ ...cut, id: '' }, 'id'],
+    [{ ...cut, start: -1 }, 'start'],
+    [{ ...cut, start: NaN }, 'start'],
+    [{ ...cut, end: Infinity }, 'end'],
+    [{ ...cut, end: 90000 }, 'end'],
+    [{ ...cut, end: 2.005 }, 'end'],
+  ])('rejects %j at %s', (value, path) => {
+    expect(paths(validateMediaCut(value, 'mediaCuts[0]'))).toEqual([`mediaCuts[0].${path}`]);
+  });
+
+  it('explains a too short cut', () => {
+    expect(validateMediaCut({ ...cut, end: 2.005 })).toEqual([
+      { path: 'end', message: 'must be at least 0.01 s after start' },
+    ]);
+  });
+
+  it('requires the media cuts when parsing', () => {
+    const withoutCuts: Record<string, unknown> = { ...sample };
+    delete withoutCuts.mediaCuts;
+    expect(expectParseError(withoutCuts).issues).toEqual([
+      { path: 'mediaCuts', message: 'is required' },
+    ]);
+  });
+
+  it('rejects an unknown cut field', () => {
+    const data = { ...sample, mediaCuts: [{ ...cut, foo: 1 }] };
+    expect(expectParseError(data).issues).toEqual([
+      { path: 'mediaCuts[0].foo', message: 'is not allowed' },
+    ]);
+  });
+
+  it('rejects a too short cut when parsing', () => {
+    const data = { ...sample, mediaCuts: [{ ...cut, end: 2.005 }] };
+    expect(paths(expectParseError(data).issues)).toEqual(['mediaCuts[0].end']);
+  });
+
+  it('rejects unsorted cuts', () => {
+    const data = {
+      ...sample,
+      mediaCuts: [
+        { id: 'a', start: 5, end: 8 },
+        { id: 'b', start: 2, end: 3 },
+      ],
+    };
+    expect(expectParseError(data).issues).toEqual([
+      { path: 'mediaCuts[1]', message: 'overlaps or precedes cut "a"' },
+    ]);
+  });
+
+  it('rejects overlapping cuts', () => {
+    const data = {
+      ...sample,
+      mediaCuts: [
+        { id: 'a', start: 2, end: 5 },
+        { id: 'b', start: 4, end: 6 },
+      ],
+    };
+    expect(paths(expectParseError(data).issues)).toEqual(['mediaCuts[1]']);
+  });
+
+  it('accepts touching cuts', () => {
+    const mediaCuts = [
+      { id: 'a', start: 2, end: 5 },
+      { id: 'b', start: 5, end: 6 },
+    ];
+    expect(parseProject({ ...sample, mediaCuts }).mediaCuts).toEqual(mediaCuts);
+  });
+
+  it('rejects duplicate cut ids', () => {
+    const data = {
+      ...sample,
+      mediaCuts: [
+        { id: 'a', start: 2, end: 3 },
+        { id: 'a', start: 4, end: 5 },
+      ],
+    };
+    expect(paths(expectParseError(data).issues)).toEqual(['mediaCuts[1].id']);
+  });
+
+  it('rejects too many cuts', () => {
+    const mediaCuts = Array.from({ length: 1001 }, (_, index) => ({
+      id: `c${index}`,
+      start: index,
+      end: index + 0.5,
+    }));
+    expect(validateProject({ ...project, mediaCuts })).toEqual([
+      { path: 'mediaCuts', message: 'must have at most 1000 cuts' },
+    ]);
+  });
+
+  it('accepts the shared backend fixture with its empty cuts', () => {
+    expect(parseProject(sample).mediaCuts).toEqual([]);
   });
 });

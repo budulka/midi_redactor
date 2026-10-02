@@ -1,11 +1,14 @@
 import {
   ALLOWED_DENOMINATORS,
   MAX_BPM,
+  MAX_MEDIA_CUT_END,
+  MAX_MEDIA_CUTS,
   MAX_MEDIA_OFFSET,
   MAX_NUMERATOR,
   MAX_PITCH,
   MAX_VELOCITY,
   MIN_BPM,
+  MIN_MEDIA_CUT_SECONDS,
   MIN_MEDIA_OFFSET,
   MIN_NOTE_DURATION,
   MIN_NUMERATOR,
@@ -14,7 +17,7 @@ import {
   MIN_VELOCITY,
   PEDAL_TYPES,
 } from './constants.ts';
-import type { Note, PedalEvent, PedalType, Project, TimeSignature } from './types.ts';
+import type { MediaCut, Note, PedalEvent, PedalType, Project, TimeSignature } from './types.ts';
 
 export interface ValidationIssue {
   /** Location of the problem, e.g. `notes[2].pitch`, `pedals[0].end`, `bpm`. */
@@ -101,6 +104,28 @@ export function validatePedal(pedal: PedalEvent, path = ''): ValidationIssue[] {
   return issues;
 }
 
+export function validateMediaCut(cut: MediaCut, path = ''): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  if (cut.id.length === 0) {
+    issues.push({ path: join(path, 'id'), message: 'must be a non-empty string' });
+  }
+  if (!isNonNegativeFinite(cut.start)) {
+    issues.push({ path: join(path, 'start'), message: 'must be a finite number >= 0' });
+  }
+  if (!(Number.isFinite(cut.end) && cut.end <= MAX_MEDIA_CUT_END)) {
+    issues.push({
+      path: join(path, 'end'),
+      message: `must be a finite number <= ${MAX_MEDIA_CUT_END}`,
+    });
+  } else if (cut.end < cut.start + MIN_MEDIA_CUT_SECONDS) {
+    issues.push({
+      path: join(path, 'end'),
+      message: `must be at least ${MIN_MEDIA_CUT_SECONDS} s after start`,
+    });
+  }
+  return issues;
+}
+
 export function validateTimeSignature(
   ts: TimeSignature,
   path = 'timeSignature',
@@ -171,11 +196,33 @@ function pedalOverlapIssues(pedals: readonly PedalEvent[]): ValidationIssue[] {
   return issues;
 }
 
+function mediaCutOrderIssues(cuts: readonly MediaCut[]): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  for (let i = 1; i < cuts.length; i += 1) {
+    if (cuts[i].start < cuts[i - 1].end) {
+      issues.push({
+        path: `mediaCuts[${i}]`,
+        message: `overlaps or precedes cut "${cuts[i - 1].id}"`,
+      });
+    }
+  }
+  return issues;
+}
+
+function mediaCutCountIssues(cuts: readonly MediaCut[]): ValidationIssue[] {
+  if (cuts.length <= MAX_MEDIA_CUTS) return [];
+  return [{ path: 'mediaCuts', message: `must have at most ${MAX_MEDIA_CUTS} cuts` }];
+}
+
 export function validateProject(project: Project): ValidationIssue[] {
   return [
     ...validateBpm(project.bpm),
     ...validateTimeSignature(project.timeSignature),
     ...validateMediaOffset(project.mediaOffset),
+    ...mediaCutCountIssues(project.mediaCuts),
+    ...project.mediaCuts.flatMap((cut, index) => validateMediaCut(cut, `mediaCuts[${index}]`)),
+    ...duplicateIdIssues(project.mediaCuts, 'mediaCuts'),
+    ...mediaCutOrderIssues(project.mediaCuts),
     ...project.notes.flatMap((note, index) => validateNote(note, `notes[${index}]`)),
     ...duplicateIdIssues(project.notes, 'notes'),
     ...project.pedals.flatMap((pedal, index) => validatePedal(pedal, `pedals[${index}]`)),
@@ -241,6 +288,12 @@ const PEDAL_SHAPE: Record<keyof PedalEvent, FieldKind> = {
   end: 'number',
 };
 
+const MEDIA_CUT_SHAPE: Record<keyof MediaCut, FieldKind> = {
+  id: 'string',
+  start: 'number',
+  end: 'number',
+};
+
 const TIME_SIGNATURE_SHAPE: Record<keyof TimeSignature, FieldKind> = {
   numerator: 'number',
   denominator: 'number',
@@ -250,6 +303,7 @@ const PROJECT_SHAPE: Record<keyof Project, FieldKind> = {
   bpm: 'number',
   timeSignature: 'object',
   mediaOffset: 'number',
+  mediaCuts: 'array',
   notes: 'array',
   pedals: 'array',
 };
@@ -285,6 +339,20 @@ function parsePedal(
   };
 }
 
+function parseMediaCut(
+  value: unknown,
+  path: string,
+  issues: ValidationIssue[],
+): MediaCut | undefined {
+  const record = checkShape(value, MEDIA_CUT_SHAPE, path, issues);
+  if (!record) return undefined;
+  return {
+    id: record.id as string,
+    start: record.start as number,
+    end: record.end as number,
+  };
+}
+
 /**
  * Parses untrusted JSON data into a valid `Project`.
  * Throws `ProjectParseError` listing every structural or validation problem.
@@ -306,6 +374,9 @@ export function parseProject(data: unknown): Project {
   const pedals = (record.pedals as unknown[]).map((pedal, index) =>
     parsePedal(pedal, `pedals[${index}]`, issues),
   );
+  const mediaCuts = (record.mediaCuts as unknown[]).map((cut, index) =>
+    parseMediaCut(cut, `mediaCuts[${index}]`, issues),
+  );
   if (issues.length > 0 || !timeSignature) throw new ProjectParseError(issues);
 
   const project: Project = {
@@ -315,6 +386,7 @@ export function parseProject(data: unknown): Project {
       denominator: timeSignature.denominator as number,
     },
     mediaOffset: record.mediaOffset as number,
+    mediaCuts: mediaCuts as MediaCut[],
     notes: notes as Note[],
     pedals: pedals as PedalEvent[],
   };
