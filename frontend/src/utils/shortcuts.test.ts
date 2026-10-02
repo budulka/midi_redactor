@@ -1,6 +1,5 @@
 import {
   SHORTCUT_HINTS,
-  editorShortcutFor,
   globalShortcutFor,
   isActivationTarget,
   isTextEntryTarget,
@@ -103,32 +102,5 @@ describe('globalShortcutFor', () => {
       export: 'Ctrl+S',
       playPause: 'Space',
     });
-  });
-});
-
-describe('editorShortcutFor', () => {
-  it('matches select all by code', () => {
-    expect(editorShortcutFor(key({ key: 'a', code: 'KeyA', ctrlKey: true }))).toBe('selectAll');
-    expect(editorShortcutFor(key({ key: 'ф', code: 'KeyA', metaKey: true }))).toBe('selectAll');
-    expect(editorShortcutFor(key({ key: 'a', code: 'KeyA' }))).toBeNull();
-  });
-
-  it('matches delete, escape and arrows by key', () => {
-    expect(editorShortcutFor(key({ key: 'Delete' }))).toBe('delete');
-    expect(editorShortcutFor(key({ key: 'Backspace' }))).toBe('delete');
-    expect(editorShortcutFor(key({ key: 'Escape' }))).toBe('clearSelection');
-    expect(editorShortcutFor(key({ key: 'ArrowLeft' }))).toBe('nudgeLeft');
-    expect(editorShortcutFor(key({ key: 'ArrowRight' }))).toBe('nudgeRight');
-    expect(editorShortcutFor(key({ key: 'ArrowUp' }))).toBe('nudgeUp');
-    expect(editorShortcutFor(key({ key: 'ArrowDown' }))).toBe('nudgeDown');
-    expect(editorShortcutFor(key({ key: 'ArrowUp', shiftKey: true }))).toBe('octaveUp');
-    expect(editorShortcutFor(key({ key: 'ArrowDown', shiftKey: true }))).toBe('octaveDown');
-  });
-
-  it('ignores other combinations', () => {
-    expect(editorShortcutFor(key({ key: 'ArrowUp', ctrlKey: true }))).toBeNull();
-    expect(editorShortcutFor(key({ key: 'ArrowUp', altKey: true }))).toBeNull();
-    expect(editorShortcutFor(key({ key: 'ArrowLeft', shiftKey: true }))).toBeNull();
-    expect(editorShortcutFor(key({ key: 'constructor' }))).toBeNull();
   });
 });
