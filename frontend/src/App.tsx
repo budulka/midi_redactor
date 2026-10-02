@@ -3,6 +3,7 @@ import AudioTrack from './components/AudioTrack.tsx';
 import BackendStatus from './components/BackendStatus.tsx';
 import ExportButton from './components/ExportButton.tsx';
 import ImportButton from './components/ImportButton.tsx';
+import InfoButton from './components/InfoButton.tsx';
 import KeyboardShortcuts from './components/KeyboardShortcuts.tsx';
 import MediaCutsShade from './components/MediaCutsShade.tsx';
 import MediaOffsetControls from './components/MediaOffsetControls.tsx';
@@ -42,6 +43,7 @@ export default function App() {
                     <ProjectInfo />
                     <ImportButton />
                     <ExportButton />
+                    <InfoButton />
                     <BackendStatus />
                   </>
                 }

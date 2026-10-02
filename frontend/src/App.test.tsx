@@ -136,6 +136,17 @@ describe('App', () => {
     expect(await screen.findByText('backend: online')).toBeInTheDocument();
   });
 
+  it('opens and closes the Info window from the top bar', async () => {
+    render(<App />);
+    const transport = within(screen.getByRole('banner', { name: 'Transport' }));
+    fireEvent.click(transport.getByRole('button', { name: 'Info' }));
+    const dialog = screen.getByRole('dialog', { name: 'Keyboard shortcuts and mouse actions' });
+    expect(within(dialog).getByRole('heading', { name: 'Whole page' })).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(await screen.findByText('backend: online')).toBeInTheDocument();
+  });
+
   it('shows the MIDI import button without sending a request', async () => {
     render(<App />);
     const transport = within(screen.getByRole('banner', { name: 'Transport' }));
