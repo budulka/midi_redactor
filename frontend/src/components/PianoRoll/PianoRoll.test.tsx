@@ -128,4 +128,33 @@ describe('PianoRoll', () => {
     );
     expect(screen.getByLabelText('Time ruler')).toHaveStyle({ width: '9400px' });
   });
+
+  it('renders the media timeline row when asked', () => {
+    const { container } = render(
+      <ProjectProvider>
+        <EditorProvider>
+          <TransportProvider loadEngine={() => Promise.resolve(engine)}>
+            <PianoRoll
+              mediaTimeline={(g) => (
+                <div data-testid="mt">{`${g.durationSeconds}/${g.pixelsPerSecond}`}</div>
+              )}
+            />
+          </TransportProvider>
+        </EditorProvider>
+      </ProjectProvider>,
+    );
+    const row = screen.getByTestId('mt');
+    expect(row).toHaveTextContent('60/100');
+    expect(row.parentElement).toHaveClass('piano-roll__media');
+    expect(container.querySelector('.piano-roll__corner--media')).toHaveTextContent('Media');
+    const ruler = container.querySelector<HTMLElement>('.piano-roll__ruler');
+    expect(ruler?.style.top).toBe('28px');
+  });
+
+  it('has no media timeline row by default', () => {
+    renderPianoRoll();
+    expect(document.querySelector('.piano-roll__media')).toBeNull();
+    const ruler = document.querySelector<HTMLElement>('.piano-roll__ruler');
+    expect(ruler?.style.top).toBe('');
+  });
 });

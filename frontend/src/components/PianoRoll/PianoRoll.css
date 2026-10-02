@@ -54,6 +54,23 @@
   border-bottom: 1px solid var(--border);
 }
 
+.piano-roll__corner--media {
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  font-size: 11px;
+  color: var(--muted);
+  user-select: none;
+}
+
+.piano-roll__media {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
 .piano-roll__ruler {
   position: sticky;
   top: 0;
