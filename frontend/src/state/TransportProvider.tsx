@@ -166,6 +166,12 @@ export default function TransportProvider({
           if (seekTo !== undefined) transport.seek(seekTo);
         });
       },
+      applyMediaTimeMap(map, seekTo) {
+        mediaSync.batch(() => {
+          mediaSync.setTimeMap(map);
+          if (seekTo !== undefined) transport.seek(seekTo);
+        });
+      },
       noteOn(pitch) {
         heldRef.current.add(pitch);
         const engine = engineRef.current;

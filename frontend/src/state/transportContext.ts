@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { TransportStatus } from '../audio/Transport.ts';
 import type { SyncedMediaTrack } from '../media/MediaSync.ts';
+import type { MediaTimeMap } from '../utils/mediaTimeMap.ts';
 
 /** Velocity of notes played on the on-screen keyboard. */
 export const LIVE_VELOCITY = 96;
@@ -34,6 +35,8 @@ export interface TransportApi {
    * (drag preview, "Bar 1 here"); with `seekTo` the transport seeks in the same sync pass.
    */
   applyMediaOffset(offset: number, seekTo?: number): void;
+  /** Applies a whole media time map at once (cut edge preview); with `seekTo` the transport seeks in the same sync pass. */
+  applyMediaTimeMap(map: MediaTimeMap, seekTo?: number): void;
   noteOn(pitch: number): void;
   noteOff(pitch: number): void;
   /** Retries loading the piano after an error. */

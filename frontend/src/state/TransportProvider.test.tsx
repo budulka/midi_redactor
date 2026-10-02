@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type { PianoEngine } from '../audio/engine.ts';
 import { FakePianoEngine } from '../audio/testing/FakePianoEngine.ts';
-import { addNotes, setBpm, setMediaOffset } from './actions.ts';
+import { addMediaCut, addNotes, setBpm, setMediaOffset } from './actions.ts';
 import { createEmptyProject } from './constants.ts';
 import EditorProvider from './EditorProvider.tsx';
 import ProjectProvider from './ProjectProvider.tsx';
@@ -350,6 +350,21 @@ describe('TransportProvider media synchronization', () => {
         <button type="button" onClick={() => api.applyMediaOffset(3, 0)}>
           apply3
         </button>
+        <button type="button" onClick={() => dispatch(addMediaCut({ start: 2, end: 5 }))}>
+          cut
+        </button>
+        <button
+          type="button"
+          onClick={() => api.applyMediaTimeMap({ offset: 0, cuts: [{ start: 2, end: 6 }] }, 2)}
+        >
+          previewMap
+        </button>
+        <button type="button" onClick={() => api.applyMediaOffset(1)}>
+          apply1
+        </button>
+        <button type="button" onClick={() => api.seek(2)}>
+          seek2
+        </button>
       </>
     );
   }
@@ -500,5 +515,35 @@ describe('TransportProvider media synchronization', () => {
     engine.time = 64.06;
     act(() => engine.tick());
     expect(readState().status).toBe('playing');
+  });
+
+  it('applies project cuts to the media', () => {
+    const { loadReady } = setupMedia();
+    click('attach');
+    const player = loadReady(30);
+    click('seek2');
+    click('cut');
+    expect(player.calls.filter((call) => call.startsWith('setTime:')).at(-1)).toBe('setTime:5');
+    expect(screen.getByRole('status', { name: 'media duration' }).textContent).toBe('27');
+  });
+
+  it('applies a preview map and a seek in one pass', () => {
+    const { loadReady } = setupMedia();
+    click('attach');
+    const player = loadReady(30);
+    player.calls.length = 0;
+    click('previewMap');
+    expect(player.calls.filter((call) => call.startsWith('setTime:'))).toEqual(['setTime:6']);
+    expect(readState().position).toBe(2);
+  });
+
+  it('keeps the cuts when the offset is applied', () => {
+    const { loadReady } = setupMedia();
+    click('attach');
+    loadReady(30);
+    click('cut');
+    expect(screen.getByRole('status', { name: 'media duration' }).textContent).toBe('27');
+    click('apply1');
+    expect(screen.getByRole('status', { name: 'media duration' }).textContent).toBe('26');
   });
 });
