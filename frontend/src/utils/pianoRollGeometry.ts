@@ -8,6 +8,8 @@ import { TIME_EPSILON, barDurationSeconds, beatDurationSeconds } from './time.ts
 export const ROW_HEIGHT_PX = 14;
 export const KEYBOARD_WIDTH_PX = 72;
 export const RULER_HEIGHT_PX = 24;
+/** Height of the media timeline row above the ruler. */
+export const MEDIA_TIMELINE_HEIGHT_PX = 28;
 export const DEFAULT_PIXELS_PER_SECOND = 100;
 export const MIN_PIXELS_PER_SECOND = 20;
 export const MAX_PIXELS_PER_SECOND = 1000;
