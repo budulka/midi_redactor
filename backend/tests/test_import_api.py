@@ -109,3 +109,12 @@ def test_import_returns_zero_media_offset() -> None:
 
     assert response.status_code == 200
     assert response.json()["project"]["mediaOffset"] == 0
+
+
+def test_import_returns_no_media_cuts() -> None:
+    data = export_midi(Project.model_validate(fixture_json()))
+
+    response = client.post(URL, content=data, headers=MIDI_HEADERS)
+
+    assert response.status_code == 200
+    assert response.json()["project"]["mediaCuts"] == []

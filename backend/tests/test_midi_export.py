@@ -5,7 +5,7 @@ from typing import Literal
 
 import pytest
 
-from app.models.project import Note, PedalEvent, PedalType, Project, TimeSignature
+from app.models.project import MediaCut, Note, PedalEvent, PedalType, Project, TimeSignature
 from app.services.midi_export import (
     EventOrder,
     MidiEvent,
@@ -351,3 +351,9 @@ def test_media_offset_does_not_change_the_file(offset: float) -> None:
     shifted = sample_project().model_copy(update={"media_offset": offset})
 
     assert export_midi(shifted) == export_midi(sample_project())
+
+
+def test_media_cuts_do_not_change_the_file() -> None:
+    cut = sample_project().model_copy(update={"media_cuts": [MediaCut(id="c", start=1, end=3)]})
+
+    assert export_midi(cut) == export_midi(sample_project())
