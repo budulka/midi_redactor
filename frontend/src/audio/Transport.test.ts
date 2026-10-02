@@ -11,7 +11,13 @@ function pedal(type: PedalType, start: number, end: number): PedalEvent {
 }
 
 function project(notes: Note[], pedals: PedalEvent[] = []): Project {
-  return { bpm: 120, timeSignature: { numerator: 4, denominator: 4 }, notes, pedals };
+  return {
+    bpm: 120,
+    timeSignature: { numerator: 4, denominator: 4 },
+    mediaOffset: 0,
+    notes,
+    pedals,
+  };
 }
 
 const a = note('a', 60, 0, 0.5, 100);

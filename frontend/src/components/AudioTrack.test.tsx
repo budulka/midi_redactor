@@ -175,3 +175,22 @@ describe('AudioTrack', () => {
     expect(name).toHaveAttribute('title', longName);
   });
 });
+
+describe('AudioTrack overlay', () => {
+  it('draws the overlay inside the stage', () => {
+    render(
+      <AudioTrackProvider
+        createPlayer={createFakeWaveformPlayers().create}
+        canPlayType={() => true}
+        createWaveformView={createFakeWaveformViews().create}
+      >
+        <VideoProvider createPlayer={createFakeMediaPlayers().create} canPlayType={() => true}>
+          <AudioTrack overlay={<div data-testid="overlay" />} />
+        </VideoProvider>
+      </AudioTrackProvider>,
+    );
+    const overlay = screen.getByTestId('overlay');
+    expect(overlay.parentElement).toHaveClass('audio-track__stage');
+    expect(overlay.parentElement?.lastElementChild).toBe(overlay);
+  });
+});

@@ -29,6 +29,11 @@ export interface TransportApi {
   setRate(rate: number): void;
   /** Makes a media track follow the transport; returns the function that detaches it. */
   attachMedia(track: SyncedMediaTrack): () => void;
+  /**
+   * Applies a media offset to the synchronization at once, before the project change reaches it
+   * (drag preview, "Bar 1 here"); with `seekTo` the transport seeks in the same sync pass.
+   */
+  applyMediaOffset(offset: number, seekTo?: number): void;
   noteOn(pitch: number): void;
   noteOff(pitch: number): void;
   /** Retries loading the piano after an error. */

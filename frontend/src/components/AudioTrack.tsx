@@ -1,11 +1,12 @@
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { useAudioTrackApi, useAudioTrackState } from '../state/audioTrackContext.ts';
-import { useVideoApi, useVideoState } from '../state/videoContext.ts';
+import { useVideoState } from '../state/videoContext.ts';
 import { AUDIO_FILE_ACCEPT } from '../utils/audioFormats.ts';
 import { formatMediaPosition } from '../utils/transportFormat.ts';
 import FileLoadButton from './FileLoadButton.tsx';
 import { useFileDrop } from './useFileDrop.ts';
 import { useLivePosition } from './useLivePosition.ts';
+import { useShownMedia } from './useShownMedia.ts';
 import VideoSoundWaveform from './VideoSoundWaveform.tsx';
 
 /**
@@ -13,16 +14,18 @@ import VideoSoundWaveform from './VideoSoundWaveform.tsx';
  * transport; a click on the waveform seeks the whole timeline. While a video is loaded instead of
  * an audio file (only one media file is loaded at a time), the track shows the video's sound.
  */
-export default function AudioTrack() {
+interface AudioTrackProps {
+  /** Drawn over the waveform, as the last child of the stage (e.g. the bar 1 marker). */
+  overlay?: ReactNode;
+}
+
+export default function AudioTrack({ overlay }: AudioTrackProps = {}) {
   const audio = useAudioTrackState();
   const video = useVideoState();
   const api = useAudioTrackApi();
-  const videoApi = useVideoApi();
   const { status, fileName, error } = audio;
-  const showsVideo = status === 'empty' && video.status !== 'empty';
   // The position follows the media shown on the track.
-  const shown = showsVideo ? video : audio;
-  const getShownTime = showsVideo ? videoApi.getCurrentTime : api.getCurrentTime;
+  const { showsVideo, state: shown, getCurrentTime: getShownTime } = useShownMedia();
   const { duration } = shown;
   const waveformRef = useRef<HTMLDivElement>(null);
   const positionRef = useRef<HTMLOutputElement>(null);
@@ -88,6 +91,7 @@ export default function AudioTrack() {
         {status === 'loading' && (
           <p className="audio-track__status audio-track__overlay">Loading {fileName}…</p>
         )}
+        {overlay}
       </div>
       <div className="audio-track__controls" role="group" aria-label="Audio playback">
         <output ref={positionRef} className="audio-track__position" aria-label="Audio position" />

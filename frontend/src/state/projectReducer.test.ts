@@ -9,6 +9,7 @@ import {
   removeNotes,
   removePedals,
   setBpm,
+  setMediaOffset,
   setTimeSignature,
   updateNote,
   updateNotes,
@@ -37,6 +38,7 @@ function makeState(overrides: Partial<Project> = {}): Project {
   return deepFreeze({
     bpm: 120,
     timeSignature: { numerator: 4, denominator: 4 },
+    mediaOffset: 0,
     notes: [n1, n2, n3],
     pedals: [sustain, soft],
     ...overrides,
@@ -414,5 +416,38 @@ describe('action creators', () => {
     expect(next.notes).toEqual([
       { id: 'new-note', pitch: 72, start: 1, duration: 0.5, velocity: 64 },
     ]);
+  });
+});
+
+describe('project/setMediaOffset', () => {
+  it('sets the offset and keeps notes, pedals and tempo', () => {
+    const state = makeState();
+    const next = projectReducer(state, setMediaOffset(3.2));
+    expect(next.mediaOffset).toBe(3.2);
+    expect(next.notes).toBe(state.notes);
+    expect(next.pedals).toBe(state.pedals);
+    expect(next.bpm).toBe(state.bpm);
+  });
+
+  it('rounds to the millisecond and clamps', () => {
+    const state = makeState();
+    expect(projectReducer(state, setMediaOffset(3.2004)).mediaOffset).toBe(3.2);
+    expect(projectReducer(state, setMediaOffset(10000)).mediaOffset).toBe(3600);
+    expect(projectReducer(state, setMediaOffset(-2)).mediaOffset).toBe(-2);
+  });
+
+  it('returns the same state when nothing changes', () => {
+    const state = makeState();
+    expect(projectReducer(state, setMediaOffset(Number.NaN))).toBe(state);
+    expect(projectReducer(state, setMediaOffset(Infinity))).toBe(state);
+    expect(projectReducer(state, setMediaOffset(0))).toBe(state);
+    const shifted = makeState({ mediaOffset: 3.2 });
+    expect(projectReducer(shifted, setMediaOffset(3.2001))).toBe(shifted);
+  });
+
+  it('keeps the offset when the tempo changes and rescales around 0 s', () => {
+    const next = projectReducer(makeState({ mediaOffset: 3.2 }), setBpm(60));
+    expect(next.mediaOffset).toBe(3.2);
+    expect(next.notes.find((note) => note.id === 'n3')?.start).toBe(2);
   });
 });

@@ -19,6 +19,7 @@
   --key-white: #eceef2;
   --key-black: #1f2127;
   --playhead: #ff5a5a;
+  --bar-one: #ffc94d;
   color-scheme: dark;
   font-family: system-ui, sans-serif;
 }
@@ -342,6 +343,79 @@ body {
 
 .audio-track__status {
   color: var(--text);
+}
+
+/* Bar 1 marker over the waveform; the half of the handle past an edge is clipped. */
+.media-offset-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.media-offset-overlay__before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: rgb(0 0 0 / 35%);
+}
+
+.media-offset-overlay__marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  margin-left: -6px;
+  cursor: ew-resize;
+  pointer-events: auto;
+  outline: none;
+}
+
+.media-offset-overlay__marker::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 5px;
+  width: 2px;
+  background: var(--bar-one);
+}
+
+.media-offset-overlay__marker:focus-visible:not([data-pointer-focus]) {
+  outline: 2px solid var(--note);
+  outline-offset: -2px;
+}
+
+.media-offset-overlay__label {
+  position: absolute;
+  top: 0;
+  left: 8px;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: var(--bar-one);
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+}
+
+.media-offset {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.media-offset__input {
+  width: 7em;
+}
+
+.media-offset__hint {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .audio-track__position {

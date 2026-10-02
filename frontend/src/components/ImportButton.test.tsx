@@ -1,8 +1,8 @@
 import { act, fireEvent, screen } from '@testing-library/react';
 import { MAX_MIDI_IMPORT_BYTES } from '../api/client.ts';
-import { addNotes } from '../state/actions.ts';
+import { addNotes, setMediaOffset } from '../state/actions.ts';
 import { useHistoryApi, useHistoryState } from '../state/historyContext.ts';
-import { useProjectDispatch } from '../state/projectContext.ts';
+import { useProject, useProjectDispatch } from '../state/projectContext.ts';
 import { useTransportApi, useTransportState } from '../state/transportContext.ts';
 import type { Note, PedalEvent, Project } from '../state/types.ts';
 import { readEditor, readNotes, readPedals, renderWithProviders } from './PianoRoll/testUtils.tsx';
@@ -62,6 +62,7 @@ const existing: Note = { id: 'n1', pitch: 40, start: 0, duration: 1, velocity: 6
 const imported: Project = {
   bpm: 90,
   timeSignature: { numerator: 3, denominator: 4 },
+  mediaOffset: 0,
   notes: [
     { id: 'n1', pitch: 60, start: 0, duration: 0.5, velocity: 100 },
     { id: 'n2', pitch: 64, start: 0.5, duration: 0.5, velocity: 80 },
@@ -311,5 +312,51 @@ describe('ImportButton', () => {
       calls[0].reject(new DOMException('aborted', 'AbortError'));
     });
     expect(consoleError).not.toHaveBeenCalled();
+  });
+});
+
+function OffsetProbe() {
+  const { mediaOffset } = useProject();
+  const dispatch = useProjectDispatch();
+  return (
+    <>
+      <button type="button" onClick={() => dispatch(setMediaOffset(2.5))}>
+        Set offset
+      </button>
+      <output aria-label="media offset">{mediaOffset}</output>
+    </>
+  );
+}
+
+describe('ImportButton and the media offset', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('keeps the current media offset of the project', async () => {
+    const { calls } = stubFetch();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const view = renderWithProviders(
+      <>
+        <ImportButton />
+        <TestControls />
+        <OffsetProbe />
+      </>,
+      [existing],
+    );
+    const offset = () => screen.getByRole('status', { name: 'media offset' }).textContent;
+    fireEvent.click(screen.getByRole('button', { name: 'Set offset' }));
+    expect(offset()).toBe('2.5');
+
+    choose();
+    await settle(calls[0], okResponse());
+
+    expect(offset()).toBe('2.5');
+    expect(readNotes(view)).toEqual(imported.notes);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(readNotes(view)).toEqual([existing]);
+    expect(offset()).toBe('2.5');
   });
 });

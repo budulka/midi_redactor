@@ -20,6 +20,7 @@ export type ProjectAction =
   | { readonly type: 'pedals/remove'; readonly ids: readonly string[] }
   | { readonly type: 'project/setBpm'; readonly bpm: number }
   | { readonly type: 'project/setTimeSignature'; readonly timeSignature: TimeSignature }
+  | { readonly type: 'project/setMediaOffset'; readonly offset: number }
   | { readonly type: 'project/load'; readonly project: Project }
   | { readonly type: 'project/replace'; readonly project: Project };
 
@@ -69,6 +70,11 @@ export function setBpm(bpm: number): ProjectAction {
 
 export function setTimeSignature(timeSignature: TimeSignature): ProjectAction {
   return { type: 'project/setTimeSignature', timeSignature };
+}
+
+/** Sets the media second at the start of bar 1 (rounded to 1 ms) as one undoable step. */
+export function setMediaOffset(offset: number): ProjectAction {
+  return { type: 'project/setMediaOffset', offset };
 }
 
 export function loadProject(project: Project): ProjectAction {

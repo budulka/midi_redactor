@@ -11,6 +11,7 @@ import type { PianoEngine } from '../audio/engine.ts';
 import { loadPianoEngine } from '../audio/loadEngine.ts';
 import { Transport } from '../audio/Transport.ts';
 import { MediaSync } from '../media/MediaSync.ts';
+import { normalizeMediaOffset } from './normalize.ts';
 import { useProject } from './projectContext.ts';
 import { MediaDurationContext } from './timelineContext.ts';
 import {
@@ -67,6 +68,12 @@ export default function TransportProvider({
   useEffect(() => {
     transport.setProject(project);
   }, [transport, project]);
+
+  // The project is the source of truth for the offset: undo, redo and imports reach the media.
+  const { mediaOffset } = project;
+  useEffect(() => {
+    mediaSync.setTimeMap({ offset: mediaOffset });
+  }, [mediaSync, mediaOffset]);
 
   useEffect(() => {
     transport.setMediaDuration(mediaDuration);
@@ -147,6 +154,13 @@ export default function TransportProvider({
       getPosition: () => transport.getPosition(),
       setRate: (rate) => transport.setRate(rate),
       attachMedia: (track) => mediaSync.attach(track),
+      applyMediaOffset(offset, seekTo) {
+        if (!Number.isFinite(offset)) return;
+        mediaSync.batch(() => {
+          mediaSync.setTimeMap({ offset: normalizeMediaOffset(offset) });
+          if (seekTo !== undefined) transport.seek(seekTo);
+        });
+      },
       noteOn(pitch) {
         heldRef.current.add(pitch);
         const engine = engineRef.current;

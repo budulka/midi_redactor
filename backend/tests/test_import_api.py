@@ -100,3 +100,12 @@ def test_openapi_describes_import() -> None:
 
     assert "audio/midi" in operation["requestBody"]["content"]
     assert {"200", "413", "422"} <= set(operation["responses"])
+
+
+def test_import_returns_zero_media_offset() -> None:
+    data = export_midi(Project.model_validate(fixture_json()))
+
+    response = client.post(URL, content=data, headers=MIDI_HEADERS)
+
+    assert response.status_code == 200
+    assert response.json()["project"]["mediaOffset"] == 0

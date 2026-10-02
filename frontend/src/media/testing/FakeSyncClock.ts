@@ -8,6 +8,15 @@ export class FakeSyncClock implements SyncClock {
   startDelay = 0;
   readonly seeks: number[] = [];
   private readonly listeners = new Set<() => void>();
+  private readonly notifyUnchangedSeek: boolean;
+
+  /**
+   * With `notifyUnchangedSeek: false` a seek to the same position while not playing does not
+   * notify, as Transport.seek does; by default every seek notifies.
+   */
+  constructor(options: { readonly notifyUnchangedSeek?: boolean } = {}) {
+    this.notifyUnchangedSeek = options.notifyUnchangedSeek ?? true;
+  }
 
   /** Replaces the snapshot (a new object) and notifies; a position also moves the live position. */
   set(changes: Partial<SyncClockSnapshot>): void {
@@ -37,6 +46,8 @@ export class FakeSyncClock implements SyncClock {
 
   seek(position: number): void {
     this.seeks.push(position);
+    const unchanged = this.snapshot.status !== 'playing' && position === this.snapshot.position;
+    if (unchanged && !this.notifyUnchangedSeek) return;
     this.snapshot = { ...this.snapshot, position };
     this.position = position;
     this.notify();

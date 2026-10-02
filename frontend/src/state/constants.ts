@@ -10,6 +10,11 @@ export const MIN_BPM = 20;
 export const MAX_BPM = 300;
 export const MIN_NUMERATOR = 1;
 export const MAX_NUMERATOR = 32;
+/** Limits of the media offset (media second at bar 1), seconds. */
+export const MIN_MEDIA_OFFSET = -3600;
+export const MAX_MEDIA_OFFSET = 3600;
+/** The media offset is kept to the millisecond. */
+export const MEDIA_OFFSET_STEP = 0.001;
 
 export const PEDAL_TYPES: readonly PedalType[] = ['sustain', 'sostenuto', 'soft'];
 export const ALLOWED_DENOMINATORS: readonly number[] = [1, 2, 4, 8, 16, 32];
@@ -21,6 +26,7 @@ export function createEmptyProject(): Project {
   return {
     bpm: DEFAULT_BPM,
     timeSignature: DEFAULT_TIME_SIGNATURE,
+    mediaOffset: 0,
     notes: [],
     pedals: [],
   };

@@ -16,6 +16,8 @@ MAX_BPM: Final = 300
 MIN_NUMERATOR: Final = 1
 MAX_NUMERATOR: Final = 32
 DEFAULT_BPM: Final = 120.0
+MIN_MEDIA_OFFSET: Final = -3600.0
+MAX_MEDIA_OFFSET: Final = 3600.0
 
 PedalType = Literal["sustain", "sostenuto", "soft"]
 Denominator = Literal[1, 2, 4, 8, 16, 32]
@@ -58,6 +60,10 @@ def _default_time_signature() -> TimeSignature:
 class Project(CamelModel):
     bpm: float = Field(default=DEFAULT_BPM, ge=MIN_BPM, le=MAX_BPM, allow_inf_nan=False)
     time_signature: TimeSignature = Field(default_factory=_default_time_signature)
+    # Media second at the start of bar 1; the MIDI file itself always starts at bar 1.
+    media_offset: float = Field(
+        default=0.0, ge=MIN_MEDIA_OFFSET, le=MAX_MEDIA_OFFSET, allow_inf_nan=False
+    )
     notes: list[Note] = Field(default_factory=list)
     pedals: list[PedalEvent] = Field(default_factory=list)
 

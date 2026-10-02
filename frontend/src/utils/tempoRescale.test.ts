@@ -24,6 +24,7 @@ function project(overrides: Partial<Project> = {}): Project {
   return {
     bpm: 120,
     timeSignature: { numerator: 4, denominator: 4 },
+    mediaOffset: 0,
     notes: [],
     pedals: [],
     ...overrides,
@@ -300,5 +301,11 @@ describe('rescaleProjectTempo', () => {
     });
     expect(back.pedals[0].start).toBeCloseTo(0.4, 9);
     expect(back.pedals[0].end).toBeCloseTo(3.3, 9);
+  });
+});
+
+describe('rescaleProjectTempo and the media offset', () => {
+  it('keeps the media offset', () => {
+    expect(rescaleProjectTempo(project({ mediaOffset: 3.2 }), 60).mediaOffset).toBe(3.2);
   });
 });

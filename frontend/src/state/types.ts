@@ -30,6 +30,8 @@ export interface Project {
   /** Tempo in quarter notes per minute. */
   readonly bpm: number;
   readonly timeSignature: TimeSignature;
+  /** Media second at the start of bar 1, seconds, rounded to 1 ms; see utils/mediaTimeMap.ts. */
+  readonly mediaOffset: number;
   readonly notes: readonly Note[];
   readonly pedals: readonly PedalEvent[];
 }

@@ -1,8 +1,10 @@
 import {
   MAX_BPM,
+  MAX_MEDIA_OFFSET,
   MAX_PITCH,
   MAX_VELOCITY,
   MIN_BPM,
+  MIN_MEDIA_OFFSET,
   MIN_NOTE_DURATION,
   MIN_PEDAL_DURATION,
   MIN_PITCH,
@@ -24,6 +26,12 @@ export function clampVelocity(velocity: number): number {
 
 export function clampBpm(bpm: number): number {
   return clamp(bpm, MIN_BPM, MAX_BPM);
+}
+
+/** Rounds to 1 ms and clamps to MIN/MAX_MEDIA_OFFSET; -0 becomes 0. Expects a finite number. */
+export function normalizeMediaOffset(offset: number): number {
+  const result = clamp(Math.round(offset * 1000) / 1000, MIN_MEDIA_OFFSET, MAX_MEDIA_OFFSET);
+  return result === 0 ? 0 : result;
 }
 
 /**

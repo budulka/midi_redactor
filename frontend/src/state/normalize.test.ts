@@ -1,5 +1,12 @@
 import { MIN_PEDAL_DURATION } from './constants.ts';
-import { clampBpm, clampPitch, clampVelocity, normalizeNote, normalizePedal } from './normalize.ts';
+import {
+  clampBpm,
+  clampPitch,
+  clampVelocity,
+  normalizeMediaOffset,
+  normalizeNote,
+  normalizePedal,
+} from './normalize.ts';
 import type { Note, PedalEvent } from './types.ts';
 
 describe('clamp helpers', () => {
@@ -63,5 +70,24 @@ describe('normalizePedal', () => {
   it('returns a valid pedal unchanged', () => {
     const pedal: PedalEvent = Object.freeze({ id: 'p1', type: 'sustain', start: 0, end: 1.5 });
     expect(normalizePedal(pedal)).toBe(pedal);
+  });
+});
+
+describe('normalizeMediaOffset', () => {
+  it('rounds to the millisecond', () => {
+    expect(normalizeMediaOffset(3.2004)).toBe(3.2);
+    expect(normalizeMediaOffset(3.2006)).toBe(3.201);
+    expect(normalizeMediaOffset(-1.5)).toBe(-1.5);
+  });
+
+  it('turns a tiny negative value into a plain zero', () => {
+    const result = normalizeMediaOffset(-0.0004);
+    expect(result).toBe(0);
+    expect(Object.is(result, 0)).toBe(true);
+  });
+
+  it('clamps to one hour either way', () => {
+    expect(normalizeMediaOffset(5000)).toBe(3600);
+    expect(normalizeMediaOffset(-5000)).toBe(-3600);
   });
 });

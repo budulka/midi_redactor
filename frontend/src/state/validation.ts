@@ -1,10 +1,12 @@
 import {
   ALLOWED_DENOMINATORS,
   MAX_BPM,
+  MAX_MEDIA_OFFSET,
   MAX_NUMERATOR,
   MAX_PITCH,
   MAX_VELOCITY,
   MIN_BPM,
+  MIN_MEDIA_OFFSET,
   MIN_NOTE_DURATION,
   MIN_NUMERATOR,
   MIN_PEDAL_DURATION,
@@ -124,6 +126,18 @@ export function validateBpm(bpm: number): ValidationIssue[] {
   return [{ path: 'bpm', message: `must be a number from ${MIN_BPM} to ${MAX_BPM}` }];
 }
 
+export function validateMediaOffset(offset: number): ValidationIssue[] {
+  if (Number.isFinite(offset) && offset >= MIN_MEDIA_OFFSET && offset <= MAX_MEDIA_OFFSET) {
+    return [];
+  }
+  return [
+    {
+      path: 'mediaOffset',
+      message: `must be a number from ${MIN_MEDIA_OFFSET} to ${MAX_MEDIA_OFFSET}`,
+    },
+  ];
+}
+
 function duplicateIdIssues(items: readonly { id: string }[], prefix: string): ValidationIssue[] {
   const seen = new Set<string>();
   const issues: ValidationIssue[] = [];
@@ -161,6 +175,7 @@ export function validateProject(project: Project): ValidationIssue[] {
   return [
     ...validateBpm(project.bpm),
     ...validateTimeSignature(project.timeSignature),
+    ...validateMediaOffset(project.mediaOffset),
     ...project.notes.flatMap((note, index) => validateNote(note, `notes[${index}]`)),
     ...duplicateIdIssues(project.notes, 'notes'),
     ...project.pedals.flatMap((pedal, index) => validatePedal(pedal, `pedals[${index}]`)),
@@ -234,6 +249,7 @@ const TIME_SIGNATURE_SHAPE: Record<keyof TimeSignature, FieldKind> = {
 const PROJECT_SHAPE: Record<keyof Project, FieldKind> = {
   bpm: 'number',
   timeSignature: 'object',
+  mediaOffset: 'number',
   notes: 'array',
   pedals: 'array',
 };
@@ -298,6 +314,7 @@ export function parseProject(data: unknown): Project {
       numerator: timeSignature.numerator as number,
       denominator: timeSignature.denominator as number,
     },
+    mediaOffset: record.mediaOffset as number,
     notes: notes as Note[],
     pedals: pedals as PedalEvent[],
   };

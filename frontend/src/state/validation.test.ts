@@ -3,6 +3,7 @@ import type { Note, PedalEvent, Project } from './types.ts';
 import {
   ProjectParseError,
   parseProject,
+  validateMediaOffset,
   validateNote,
   validatePedal,
   validateProject,
@@ -14,6 +15,7 @@ const pedal: PedalEvent = { id: 'p1', type: 'sustain', start: 0, end: 1.5 };
 const project: Project = {
   bpm: 120,
   timeSignature: { numerator: 4, denominator: 4 },
+  mediaOffset: 0,
   notes: [note],
   pedals: [pedal],
 };
@@ -201,5 +203,39 @@ describe('parseProject', () => {
 
   it('builds a readable error message', () => {
     expect(expectParseError(null).message).toContain('(root)');
+  });
+});
+
+describe('media offset', () => {
+  it.each([0, -3600, 3600])('accepts %s', (offset) => {
+    expect(validateMediaOffset(offset)).toEqual([]);
+  });
+
+  it.each([NaN, Infinity, 3600.5])('rejects %s', (offset) => {
+    expect(paths(validateMediaOffset(offset))).toEqual(['mediaOffset']);
+  });
+
+  it('requires the media offset when parsing', () => {
+    const withoutOffset: Record<string, unknown> = { ...sample };
+    delete withoutOffset.mediaOffset;
+    expect(expectParseError(withoutOffset).issues).toEqual([
+      { path: 'mediaOffset', message: 'is required' },
+    ]);
+  });
+
+  it('rejects a string media offset', () => {
+    expect(paths(expectParseError({ ...sample, mediaOffset: '3' }).issues)).toEqual([
+      'mediaOffset',
+    ]);
+  });
+
+  it('rejects a media offset out of range', () => {
+    expect(expectParseError({ ...sample, mediaOffset: 4000 }).issues).toEqual([
+      { path: 'mediaOffset', message: 'must be a number from -3600 to 3600' },
+    ]);
+  });
+
+  it('keeps the media offset of a valid project', () => {
+    expect(parseProject({ ...sample, mediaOffset: -1.5 }).mediaOffset).toBe(-1.5);
   });
 });

@@ -13,6 +13,7 @@ vi.mock('../utils/download.ts', () => ({ downloadBlob: vi.fn() }));
 const initialProject: Project = {
   bpm: 100,
   timeSignature: { numerator: 3, denominator: 4 },
+  mediaOffset: 0,
   notes: [{ id: 'n1', pitch: 60, start: 0, duration: 0.5, velocity: 90 }],
   pedals: [{ id: 'p1', type: 'sustain', start: 0, end: 1 }],
 };
@@ -243,5 +244,24 @@ describe('ExportButton', () => {
     renderButton();
     const button = screen.getByRole('button', { name: 'Export .mid' });
     expect(button).toHaveAttribute('title', 'Export .mid (Ctrl+S)');
+  });
+});
+
+describe('ExportButton and the media offset', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('sends the media offset with the project', () => {
+    const { calls } = stubFetch();
+    render(
+      <ProjectProvider initialProject={{ ...initialProject, mediaOffset: 1.25 }}>
+        <ExportButton />
+      </ProjectProvider>,
+    );
+    fireEvent.click(exportButton());
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0].init.body)).toContain('"mediaOffset":1.25');
   });
 });
