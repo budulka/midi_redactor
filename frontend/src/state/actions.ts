@@ -1,5 +1,14 @@
 import { createId } from '../utils/id.ts';
-import type { Note, NotePatch, PedalEvent, PedalPatch, Project, TimeSignature } from './types.ts';
+import type { TimeRange } from '../utils/mediaTimeMap.ts';
+import type {
+  MediaCut,
+  Note,
+  NotePatch,
+  PedalEvent,
+  PedalPatch,
+  Project,
+  TimeSignature,
+} from './types.ts';
 
 export interface NoteChange {
   readonly id: string;
@@ -21,6 +30,9 @@ export type ProjectAction =
   | { readonly type: 'project/setBpm'; readonly bpm: number }
   | { readonly type: 'project/setTimeSignature'; readonly timeSignature: TimeSignature }
   | { readonly type: 'project/setMediaOffset'; readonly offset: number }
+  | { readonly type: 'project/addMediaCut'; readonly cut: MediaCut }
+  | { readonly type: 'project/updateMediaCut'; readonly id: string; readonly range: TimeRange }
+  | { readonly type: 'project/removeMediaCut'; readonly id: string }
   | { readonly type: 'project/load'; readonly project: Project }
   | { readonly type: 'project/replace'; readonly project: Project };
 
@@ -75,6 +87,24 @@ export function setTimeSignature(timeSignature: TimeSignature): ProjectAction {
 /** Sets the media second at the start of bar 1 (rounded to 1 ms) as one undoable step. */
 export function setMediaOffset(offset: number): ProjectAction {
   return { type: 'project/setMediaOffset', offset };
+}
+
+/** Cuts a media range (raw media seconds) as one undoable step; merges overlapping cuts. */
+export function addMediaCut(range: TimeRange): ProjectAction {
+  return {
+    type: 'project/addMediaCut',
+    cut: { id: createId(), start: range.start, end: range.end },
+  };
+}
+
+/** Moves the edges of a media cut as one undoable step. */
+export function updateMediaCut(id: string, range: TimeRange): ProjectAction {
+  return { type: 'project/updateMediaCut', id, range };
+}
+
+/** Removes a media cut, bringing the cut range back, as one undoable step. */
+export function removeMediaCut(id: string): ProjectAction {
+  return { type: 'project/removeMediaCut', id };
 }
 
 export function loadProject(project: Project): ProjectAction {

@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { addNote, setMediaOffset } from './actions.ts';
+import { addMediaCut, addNote, setMediaOffset } from './actions.ts';
 import { createEmptyProject } from './constants.ts';
 import ProjectProvider from './ProjectProvider.tsx';
 import { useProjectDispatch } from './projectContext.ts';
@@ -38,5 +38,17 @@ describe('useMediaTimeMap', () => {
     });
     expect(result.current.map).not.toBe(first);
     expect(result.current.map).toEqual({ offset: 2, cuts: [] });
+  });
+
+  it('gives a new map with the cuts when a cut is added', () => {
+    const { result } = renderHook(() => useMapAndDispatch(), { wrapper });
+    const first = result.current.map;
+
+    act(() => {
+      result.current.dispatch(addMediaCut({ start: 2, end: 5 }));
+    });
+    expect(result.current.map).not.toBe(first);
+    expect(result.current.map.offset).toBe(1.5);
+    expect(result.current.map.cuts).toEqual([{ id: expect.any(String), start: 2, end: 5 }]);
   });
 });

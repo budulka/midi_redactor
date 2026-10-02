@@ -310,3 +310,10 @@ describe('rescaleProjectTempo and the media offset', () => {
     expect(rescaleProjectTempo(project({ mediaOffset: 3.2 }), 60).mediaOffset).toBe(3.2);
   });
 });
+
+describe('rescaleProjectTempo and the media cuts', () => {
+  it('keeps the media cuts array', () => {
+    const mediaCuts = [{ id: 'c', start: 2, end: 5 }];
+    expect(rescaleProjectTempo(project({ mediaCuts }), 60).mediaCuts).toBe(mediaCuts);
+  });
+});
