@@ -21,7 +21,7 @@ function useMapAndDispatch() {
 describe('useMediaTimeMap', () => {
   it('maps with the project offset', () => {
     const { result } = renderHook(() => useMediaTimeMap(), { wrapper });
-    expect(result.current).toEqual({ offset: 1.5 });
+    expect(result.current).toEqual({ offset: 1.5, cuts: [] });
   });
 
   it('keeps the same object until the offset changes', () => {
@@ -37,6 +37,6 @@ describe('useMediaTimeMap', () => {
       result.current.dispatch(setMediaOffset(2));
     });
     expect(result.current.map).not.toBe(first);
-    expect(result.current.map).toEqual({ offset: 2 });
+    expect(result.current.map).toEqual({ offset: 2, cuts: [] });
   });
 });

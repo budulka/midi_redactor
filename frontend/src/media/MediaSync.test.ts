@@ -533,7 +533,7 @@ describe('MediaSync', () => {
 describe('MediaSync with a media offset', () => {
   it('shows the frame at the offset while stopped or paused', () => {
     const { clock, sync, readyTrack } = setup();
-    sync.setTimeMap({ offset: 2 });
+    sync.setTimeMap({ offset: 2, cuts: [] });
     const { controller, player } = readyTrack();
     sync.attach(controller);
     expect(setTimes(player()).at(-1)).toBe('setTime:2');
@@ -548,11 +548,11 @@ describe('MediaSync with a media offset', () => {
     sync.attach(controller);
     expect(player().currentTime).toBe(5);
     player().calls.length = 0;
-    sync.setTimeMap({ offset: 1.5 });
+    sync.setTimeMap({ offset: 1.5, cuts: [] });
     expect(setTimes(player())).toEqual(['setTime:6.5']);
-    sync.setTimeMap({ offset: 1.5 });
+    sync.setTimeMap({ offset: 1.5, cuts: [] });
     expect(setTimes(player())).toEqual(['setTime:6.5']);
-    expect(sync.getTimeMap()).toEqual({ offset: 1.5 });
+    expect(sync.getTimeMap()).toEqual({ offset: 1.5, cuts: [] });
   });
 
   it('corrects playing media at once, without waiting for the seek cooldown', () => {
@@ -565,7 +565,7 @@ describe('MediaSync with a media offset', () => {
     fireTimer();
     expect(setTimes(player()).at(-1)).toBe('setTime:5');
     player().calls.length = 0;
-    sync.setTimeMap({ offset: 3 });
+    sync.setTimeMap({ offset: 3, cuts: [] });
     expect(env.clockNow).toBe(0);
     expect(setTimes(player())).toEqual(['setTime:8']);
   });
@@ -576,16 +576,16 @@ describe('MediaSync with a media offset', () => {
     sync.subscribe(listener);
     sync.attach(readyTrack(30).controller);
     listener.mockClear();
-    sync.setTimeMap({ offset: 2 });
+    sync.setTimeMap({ offset: 2, cuts: [] });
     expect(sync.getMediaDuration()).toBe(28);
     expect(listener).toHaveBeenCalledTimes(1);
-    sync.setTimeMap({ offset: -3 });
+    sync.setTimeMap({ offset: -3, cuts: [] });
     expect(sync.getMediaDuration()).toBe(33);
     expect(listener).toHaveBeenCalledTimes(2);
-    sync.setTimeMap({ offset: 40 });
+    sync.setTimeMap({ offset: 40, cuts: [] });
     expect(sync.getMediaDuration()).toBe(0);
     expect(listener).toHaveBeenCalledTimes(3);
-    sync.setTimeMap({ offset: 50 });
+    sync.setTimeMap({ offset: 50, cuts: [] });
     expect(sync.getMediaDuration()).toBe(0);
     expect(listener).toHaveBeenCalledTimes(3);
   });
@@ -595,7 +595,7 @@ describe('MediaSync with a media offset', () => {
     const { controller } = readyTrack();
     clock.set({ status: 'paused' });
     sync.attach(controller);
-    sync.setTimeMap({ offset: 2 });
+    sync.setTimeMap({ offset: 2, cuts: [] });
     controller.seek(10);
     expect(clock.seeks.at(-1)).toBe(8);
     controller.seek(1);
@@ -611,7 +611,7 @@ describe('MediaSync with a media offset', () => {
       const { clock, sync, readyTrack } = setup(new FakeSyncClock({ notifyUnchangedSeek: false }));
       const { controller, player } = readyTrack(30);
       clock.set({ status, position: 0 });
-      sync.setTimeMap({ offset: 2 });
+      sync.setTimeMap({ offset: 2, cuts: [] });
       sync.attach(controller);
       expect(player().currentTime).toBe(2);
       player().calls.length = 0;
@@ -637,7 +637,7 @@ describe('MediaSync with a media offset', () => {
     const { clock, sync, readyTrack } = setup();
     const { controller } = readyTrack(30);
     clock.set({ status: 'paused', position: 40 });
-    sync.setTimeMap({ offset: 2 });
+    sync.setTimeMap({ offset: 2, cuts: [] });
     sync.attach(controller);
     controller.seek(30);
     expect(clock.seeks).toEqual([]);
@@ -649,7 +649,7 @@ describe('MediaSync with a media offset', () => {
   it('keeps the media on its first frame until the timeline reaches it', () => {
     const { clock, sync, readyTrack, fireTimer } = setup();
     const { controller, player } = readyTrack(30);
-    sync.setTimeMap({ offset: -2 });
+    sync.setTimeMap({ offset: -2, cuts: [] });
     sync.attach(controller);
     clock.set({ status: 'playing', position: 1 });
     expect(player().calls).not.toContain('play');
@@ -670,7 +670,7 @@ describe('MediaSync with a media offset', () => {
     expect(player().currentTime).toBe(5);
     player().calls.length = 0;
     sync.batch(() => {
-      sync.setTimeMap({ offset: 3 });
+      sync.setTimeMap({ offset: 3, cuts: [] });
       clock.seek(0);
     });
     expect(setTimes(player())).toEqual(['setTime:3']);
